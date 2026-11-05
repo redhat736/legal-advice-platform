@@ -1,0 +1,344 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+import { SECURITY_CONFIG } from './config/security.js';
+import { initDB } from './config/db.js';
+import { globalLimiter } from './middlewares/rateLimiter.js';
+
+// Route imports
+import authRoutes from './routes/authRoutes.js';
+import caseRoutes from './routes/caseRoutes.js';
+import docRoutes from './routes/docRoutes.js';
+import agentRoutes from './routes/agentRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// ============================================================================
+// SECURITY & ESSENTIAL MIDDLEWARE PIPELINE
+// ============================================================================
+
+// 1. Helmet HTTP headers protection
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false // Allows dynamic frontend interactions
+  })
+);
+
+// 2. Permissive Local & Multi-Browser CORS Configuration
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow any local origin, file:/// (origin is null or undefined), and dev ports
+      callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  })
+);
+
+// 3. Body parsers with generous payload limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 4. Secure Cookie parsing
+app.use(cookieParser());
+
+// 5. Global rate limiter (generous for active chat polling)
+app.use(globalLimiter);
+
+// ============================================================================
+// API ROUTES & ROOT APPLICATION ROUTE
+// ============================================================================
+app.get('/', (req, res) => {
+  const standaloneAppPath = path.join(__dirname, '..', '..', 'index.html');
+  if (fs.existsSync(standaloneAppPath)) {
+    return res.sendFile(path.resolve(standaloneAppPath));
+  }
+
+  res.json({
+    status: 'online',
+    service: 'Legal Advice Enterprise API & Platform',
+    version: '2.0.0',
+    documentation: {
+      health: '/api/health',
+      categories: '/api/cases/categories',
+      lawyers: '/api/agents',
+      auth: '/api/auth'
+    }
+  });
+});
+
+app.get('/app', (req, res) => {
+  const standaloneAppPath = path.join(__dirname, '..', '..', 'index.html');
+  if (fs.existsSync(standaloneAppPath)) {
+    return res.sendFile(path.resolve(standaloneAppPath));
+  }
+  res.redirect('/');
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'Legal Advice Enterprise API',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/cases', caseRoutes);
+app.use('/api/documents', docRoutes);
+app.use('/api/agents', agentRoutes);
+app.use('/api/chat', chatRoutes);
+
+// ============================================================================
+// PUBLIC AI LEGAL ASSISTANT (POWERED BY GOOGLE GEMINI API)
+// ============================================================================
+const getLegalKnowledgeResponse = (query) => {
+  const q = query.toLowerCase();
+
+  if (q.includes('bail') || q.includes('arrest') || q.includes('438') || q.includes('police')) {
+    return `### ⚖️ Legal Advisory: Anticipatory Bail & Police Arrest Protections
+
+**1. Primary Statutory Provisions:**
+* **Anticipatory Bail:** Section 438 of the Code of Criminal Procedure (CrPC) / Section 482 of the Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023.
+* **Regular Bail:** Section 437 & 439 CrPC / Section 480 & 483 BNSS.
+* **Notice of Appearance:** Section 41A CrPC / Section 35(3) BNSS (*Arnesh Kumar v. State of Bihar guidelines*).
+
+**2. Procedural Action Steps:**
+1. **Jurisdiction:** File the Anticipatory Bail application before the Sessions Court or directly before the High Court having territorial jurisdiction.
+2. **Key Grounds to Plead:** 
+   * Absence of custodial interrogation requirement.
+   * False implication due to civil disputes / commercial rivalry.
+   * Undertaking to cooperate with the Investigating Officer (IO) and not tamper with evidence.
+3. **Interim Protection:** Prayer for interim protection against arrest pending the disposal of the main petition.
+
+> **💡 Legal Advice Recommendation:** Upload your FIR/Complaint copy to the **"My Documents"** vault and consult **Adv. Rahul Rawat (Criminal Specialist)** directly via our **WhatsApp Chat** tab.
+
+*Disclaimer: This is informational legal reasoning generated by NyayaAI. Always retain an advocate for courtroom representation.*`;
+  }
+
+  if (q.includes('notice') || q.includes('recovery') || q.includes('money') || q.includes('cheque') || q.includes('138')) {
+    return `### ⚖️ Legal Advisory: Legal Notice & Debt Recovery (Sec 138 NI Act / Summary Suit)
+
+**1. Statutory Framework:**
+* **Cheque Bounce:** Section 138 of the Negotiable Instruments Act, 1881.
+* **Civil Recovery:** Summary Suit under Order 37 of the Code of Civil Procedure (CPC), 1908.
+* **Commercial Dispute:** Commercial Courts Act, 2015 (Pre-institution mediation).
+
+**2. Crucial Limitation Deadlines:**
+* **Demand Notice:** Must be dispatched within **30 days** of receiving the Cheque Return Memo from your bank.
+* **Statutory Grace Period:** Accused must be granted **15 clear days** from notice receipt to clear payment.
+* **Filing Complaint:** File criminal complaint before the Metropolitan Magistrate within **30 days** after expiry of the 15-day grace period.
+
+**3. Next Procedural Steps:**
+1. Collate original cheque, deposit slip, and memo stamped "Insufficient Funds".
+2. Draft a formal Demand Notice demanding payment within 15 days.
+3. Retain verified counsel to file the complaint under Sec 138 NI Act.`;
+  }
+
+  if (q.includes('divorce') || q.includes('custody') || q.includes('marriage') || q.includes('alimony') || q.includes('family')) {
+    return `### ⚖️ Legal Advisory: Matrimonial Proceedings & Child Custody
+
+**1. Applicable Governing Statutes:**
+* **Mutual Consent Divorce:** Section 13B of the Hindu Marriage Act, 1955 / Section 28 of the Special Marriage Act, 1954.
+* **Contested Grounds:** Cruelty, Desertion (2+ years), Adultery under Section 13(1) HMA.
+* **Maintenance & Alimony:** Section 24 & 25 HMA; Section 125 CrPC / Section 144 BNSS; Domestic Violence Act, 2005.
+* **Child Custody:** Guardians and Wards Act, 1890 (*Welfare of the child is the paramount consideration*).
+
+**2. Mutual Consent Fast-Track Procedure:**
+* **First Motion:** Joint petition filed by both spouses verifying separation for at least 1 year.
+* **Cooling-off Period:** 6 months statutory wait (waiver can be sought under *Amardeep Singh v. Harveen Kaur*).
+* **Second Motion:** Final decree of divorce upon confirmation of settlement terms.`;
+  }
+
+  if (q.includes('rera') || q.includes('builder') || q.includes('property') || q.includes('flat') || q.includes('possession')) {
+    return `### ⚖️ Legal Advisory: RERA Complaint & Real Estate Delay Remedies
+
+**1. Statutory Protection:**
+* **Real Estate (Regulation and Development) Act (RERA), 2016:** Sections 18, 19 & 31.
+* **Consumer Protection Act, 2019:** District, State, or National Consumer Disputes Redressal Commission (NCDRC).
+
+**2. Legal Remedies Available to Homebuyers:**
+1. **Refund with Interest:** Under Section 18 of RERA, if the promoter fails to deliver possession according to the Agreement for Sale, the homebuyer is entitled to a full refund with interest (prescribed state rate).
+2. **Delayed Possession Interest:** If the buyer wishes to retain the flat, the builder must pay monthly interest for every month of delay until handover of verified occupancy certificate.
+3. **Execution of Conveyance Deed:** Builder is legally mandated to execute title transfer within 3 months of Occupancy Certificate.`;
+  }
+
+  if (q.includes('job') || q.includes('employee') || q.includes('terminate') || q.includes('salary') || q.includes('pf') || q.includes('employment')) {
+    return `### ⚖️ Legal Advisory: Employment Rights & Wrongful Termination
+
+**1. Governing Labor Statutes:**
+* Industrial Disputes Act, 1947 / Industrial Relations Code.
+* State Shops and Commercial Establishments Acts.
+* Payment of Gratuity Act, 1972 & Employees' Provident Fund (EPF) Act, 1952.
+* POSH Act, 2013 (Protection Against Sexual Harassment).
+
+**2. Legal Safeguards:**
+* **Notice Pay:** Employers must provide statutory notice period (typically 30-90 days) or salary in lieu of notice as contracted.
+* **Severance & Gratuity:** Mandatory gratuity payable after 5 continuous years of service (15 days' wages per year).
+* **Non-Compete Clauses:** Section 27 of the Indian Contract Act, 1872 renders post-termination restrictive covenants generally void in India as restraints of trade (*Percept D'Mark v. Zaheer Khan*).`;
+  }
+
+  // Default structured response
+  return `### ⚖️ NyayaAI Comprehensive Legal Assessment
+
+**1. Legal Assessment & Overview:**
+Regarding: *"${query}"*
+Under modern jurisprudence and applicable statutory frameworks (including Indian Constitutional law, Bharatiya Nyaya Sanhita, and civil codes), this matter falls within the purview of actionable legal rights and procedural remedies.
+
+**2. Key Procedural Steps to Protect Your Position:**
+1. **Evidentiary Documentation:** Preserve all written agreements, email trails, WhatsApp chats, financial statements, and notices. Deposit copies into our **"My Documents"** vault.
+2. **Issue Formal Representation / Legal Notice:** Before approaching court or tribunals, establish a documented legal demand through counsel.
+3. **Jurisdictional Court:** Identify the appropriate forum (District Court, High Court, NCLT, RERA, or Police Station).
+
+> **💡 Recommended Action:** You can consult our verified human advocates (e.g. **Adv. Rahul Rawat**) directly in the **WhatsApp Chat** tab, or deposit your case exhibits in the vault.
+
+*Note: Provide your Google Gemini API Key in the AI Chat box to enable live deep web legal search and custom drafting.*`;
+};
+
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { prompt, history, apiKey } = req.body;
+    const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+    const key = (apiKey && apiKey.trim()) || DEFAULT_GEMINI_KEY;
+
+    if (!prompt || !prompt.trim()) {
+      return res.status(400).json({ success: false, error: 'Prompt is required.' });
+    }
+
+    // 1. If Gemini API Key is provided, call Google Gemini REST API across active production models
+    if (key && key.trim()) {
+      const activeModels = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+      const systemPrompt = "You are 'NyayaAI - Enterprise Legal Advisory Intelligence', an authoritative, highly professional legal assistant. You specialize in Indian Law (Constitutional Law, Bharatiya Nyaya Sanhita (BNS / IPC), Bharatiya Nagarik Suraksha Sanhita (BNSS / CrPC), Bharatiya Sakshya Adhiniyam (BSA / Evidence Act), CPC, Family Law, Corporate / Commercial Law, Real Estate RERA, Labor Law, Cyber Law) as well as global jurisprudence. Provide authoritative, structured, and easy-to-understand legal advice. Cite exact statutory sections, procedural remedies, required documents, and next steps with standard disclaimers.";
+
+      const contents = [];
+      if (Array.isArray(history)) {
+        history.slice(-8).forEach(msg => {
+          contents.push({
+            role: msg.role === 'ai' ? 'model' : 'user',
+            parts: [{ text: msg.text }]
+          });
+        });
+      }
+      contents.push({
+        role: 'user',
+        parts: [{ text: prompt.trim() }]
+      });
+
+      let lastError = null;
+      for (const modelName of activeModels) {
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key.trim()}`;
+          const geminiRes = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents,
+              generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 2500
+              }
+            })
+          });
+
+          const geminiData = await geminiRes.json();
+          if (geminiData.candidates && geminiData.candidates[0]?.content?.parts?.[0]?.text) {
+            return res.json({
+              success: true,
+              text: geminiData.candidates[0].content.parts[0].text,
+              source: modelName
+            });
+          } else if (geminiData.error) {
+            lastError = geminiData.error.message;
+            if (geminiData.error.message && geminiData.error.message.includes('API key not valid')) {
+              break;
+            }
+          }
+        } catch (networkErr) {
+          lastError = networkErr.message;
+          console.warn(`Gemini call warning for ${modelName}:`, networkErr.message);
+        }
+      }
+
+      if (lastError && lastError.includes('API key not valid')) {
+        return res.status(400).json({
+          success: false,
+          error: lastError
+        });
+      }
+    }
+
+    // 2. Intelligent Structured Local Legal Engine
+    const legalAnswer = getLegalKnowledgeResponse(prompt.trim());
+    return res.json({
+      success: true,
+      text: legalAnswer,
+      source: 'nyaya-legal-engine'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// 404 & GLOBAL ERROR HANDLING
+// ============================================================================
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint not found: ${req.method} ${req.originalUrl}`
+  });
+});
+
+// Centralized Error Boundary
+app.use((err, req, res, next) => {
+  console.error(`🚨 [Application Error]: ${err.message}`);
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      error: 'File size exceeds maximum permitted limit of 5MB.'
+    });
+  }
+
+  const statusCode = err.status || 500;
+  return res.status(statusCode).json({
+    success: false,
+    error: err.message || 'Internal server error occurred.'
+  });
+});
+
+// ============================================================================
+// SERVER INITIALIZATION
+// ============================================================================
+const startServer = async () => {
+  try {
+    await initDB();
+    app.listen(PORT, () => {
+      console.log(`⚖️  Legal Advice Backend running securely on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Fatal initialization error:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;

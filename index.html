@@ -1,0 +1,2820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Legal Advice - Enterprise Legal Advocacy & Live Counsel Platform</title>
+  
+  <!-- Apple iOS & WebKit Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Legal Advice">
+  <meta name="theme-color" content="#0B132B">
+  <meta name="format-detection" content="telephone=no">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            legal: {
+              navy: '#0B132B',
+              midnight: '#1C2541',
+              accent: '#2563EB',
+              accentHover: '#1D4ED8',
+              gold: '#D97706',
+              waGreen: '#25D366',
+              waDark: '#075E54',
+              waBubble: '#DCF8C6',
+              waBg: '#EFEAE2'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    html {
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body { 
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .serif-title { font-family: 'Playfair Display', Georgia, serif; }
+    .animate-fadeIn { animation: fadeIn 0.22s ease-out forwards; }
+    .animate-slideDown { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    
+    /* iOS Safe Area & Momentum Scrolling */
+    .pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+    .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+    * { -webkit-overflow-scrolling: touch; }
+    
+    /* Prevent iOS Safari unwanted auto-zoom on input focus */
+    @media screen and (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f8fafc; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-600 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Backend API Base URL
+    const API_BASE = window.location.origin.includes('localhost:5000') 
+      ? '/api' 
+      : 'http://localhost:5000/api';
+
+    // Helper for authenticated backend API requests
+    const apiCall = async (endpoint, options = {}) => {
+      const token = localStorage.getItem('LA_JWT_TOKEN');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+      };
+      try {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers
+        });
+        const data = await res.json();
+        return data;
+      } catch (err) {
+        console.warn(`[Backend API connection on ${endpoint}]:`, err.message);
+        return null;
+      }
+    };
+
+    // Web Audio Synthesized WhatsApp Chime
+    const playWhatsAppChime = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(700, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.09);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.20);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.20);
+      } catch (e) {}
+    };
+
+    // Storage Keys
+    const STORAGE_KEY_AUTH = 'LA_AUTH_USER_V7';
+    const STORAGE_KEY_GEMINI = 'LA_GEMINI_API_KEY';
+
+    const DEFAULT_CATEGORIES = [
+      {
+        slug: 'criminal-law',
+        title: 'Criminal Law & Bail',
+        shortDesc: 'Anticipatory bail, trial defense, FIR quashing, and white-collar defense.',
+        fullDesc: 'Facing criminal proceedings requires immediate constitutional protection. Our criminal advocates appear before Magistrate courts, High Courts, and Supreme Court.',
+        services: ['Anticipatory & Regular Bail', 'Section 482 Quashing', 'Cheque Bounce (Sec 138)', 'Cybercrime & Fraud', 'Appeals & Revisions'],
+        icon: '⚖️'
+      },
+      {
+        slug: 'business-law',
+        title: 'Corporate & Business Law',
+        shortDesc: 'Contract drafting, company incorporation, founder agreements, and M&A.',
+        fullDesc: 'From early-stage entity structuring to complex enterprise litigation and mergers, we protect high-value business assets and enforce stakeholder agreements.',
+        services: ['Founders Agreement', 'Term Sheet & Shareholder Pacts', 'Vendor Arbitration', 'Trademark & IP Filing', 'Regulatory Compliance'],
+        icon: '📑'
+      },
+      {
+        slug: 'family-law',
+        title: 'Family & Matrimonial Law',
+        shortDesc: 'Mutual consent divorce, child custody, maintenance alimony, and adoption.',
+        fullDesc: 'Sensitive resolution of matrimonial disputes prioritizing confidentiality, fair child welfare maintenance, and amicable settlement decrees.',
+        services: ['Mutual Consent Divorce', 'Child Custody & Visitation', 'Alimony Settlement', 'Domestic Violence Relief', 'Restitution of Conjugal Rights'],
+        icon: '👨‍👩‍👧'
+      },
+      {
+        slug: 'real-estate-law',
+        title: 'Real Estate & Property',
+        shortDesc: 'Title verification, builder delay (RERA), tenancy disputes, and sale deed review.',
+        fullDesc: 'Due diligence on land titles, registry compliance, lease negotiation, and filing consumer / RERA complaints against delayed possession.',
+        services: ['RERA Compensation Claims', 'Title Search & Encumbrance Check', 'Commercial Lease Agreements', 'Partition & Mutation Suits', 'Eviction Petitions'],
+        icon: '🏢'
+      },
+      {
+        slug: 'employment-law',
+        title: 'Employment & Labor Law',
+        shortDesc: 'Wrongful termination, workplace harassment, unpaid dues, and severance review.',
+        fullDesc: 'Representation before Labor Commissioner, Industrial Tribunals, and High Court in employment contract violations and disciplinary inquiries.',
+        services: ['Wrongful Termination', 'Severance Package Review', 'POSH Act Compliance', 'Gratuity & PF Recovery', 'Non-Compete Enforceability'],
+        icon: '💼'
+      },
+      {
+        slug: 'personal-injury-law',
+        title: 'Personal Injury & Motor Accident',
+        shortDesc: 'MACT claims, medical negligence compensation, and workplace accidents.',
+        fullDesc: 'Securing fair financial compensation from insurance firms and negligent parties for grievous injuries, hospital expenses, and lifetime disability support.',
+        services: ['MACT Tribunal Petitions', 'Medical Negligence Cases', 'Insurance Claim Litigation', 'Third-Party Liability Claims', 'Permanent Disability Settlement'],
+        icon: '🏥'
+      }
+    ];
+
+    const DEFAULT_CASES = [
+      {
+        id: 'case-demo-1',
+        title: 'Urgent Anticipatory Bail Petition - Delhi High Court',
+        category_slug: 'criminal-law',
+        client_id: 'client-demo-1',
+        client_name: 'Alexander Wright',
+        lawyer_id: 'lawyer-rahul',
+        lawyer_name: 'Adv. Rahul Rawat',
+        status: 'In Review',
+        priority: 'High',
+        description: 'Anticipatory bail petition filed under Section 438 CrPC regarding corporate transaction dispute and impending summons.',
+        created_at: '2026-11-03'
+      }
+    ];
+
+    const DEFAULT_DOCUMENTS = [
+      {
+        id: 'doc-1',
+        name: 'FIR_Copy_Notice_Annexure_A.pdf',
+        size: '1.4 MB',
+        mime_type: 'PDF',
+        user_id: 'client-demo-1',
+        case_id: 'case-demo-1',
+        created_at: '2026-11-03'
+      }
+    ];
+
+    // =========================================================================
+    // MAIN APPLICATION COMPONENT
+    // =========================================================================
+    function App() {
+      const [currentUser, setCurrentUser] = useState(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      });
+
+      const [currentTab, setCurrentTab] = useState('dashboard');
+      const [lawyers, setLawyers] = useState([]);
+      const [cases, setCases] = useState(DEFAULT_CASES);
+      const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
+
+      // Chat State
+      const [chats, setChats] = useState([]);
+      const [activeChatId, setActiveChatId] = useState(null);
+      const [activeMessages, setActiveMessages] = useState([]);
+
+      // UI Dropdown & Modals State
+      const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+      const [selectedCatModal, setSelectedCatModal] = useState(null);
+      const [fileCaseModalOpen, setFileCaseModalOpen] = useState(false);
+      const [notificationToast, setNotificationToast] = useState(null);
+      const [isSendingMsg, setIsSendingMsg] = useState(false);
+
+      // Ref to track last seen message count for audio chime
+      const lastMessageCountRef = useRef(0);
+      const dropdownRef = useRef(null);
+
+      // Close profile dropdown when clicking outside
+      useEffect(() => {
+        const handleClickOutside = (event) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            setProfileDropdownOpen(false);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }, []);
+
+      // Save currentUser to localStorage
+      useEffect(() => {
+        try {
+          if (currentUser) {
+            localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(currentUser));
+          } else {
+            localStorage.removeItem(STORAGE_KEY_AUTH);
+            localStorage.removeItem('LA_JWT_TOKEN');
+          }
+        } catch (e) {}
+      }, [currentUser]);
+
+      // 1. Fetch Dynamic Verified Advocates from Backend Database
+      const loadLawyers = async () => {
+        try {
+          const data = await apiCall('/agents?include_inactive=true');
+          if (data && data.success && Array.isArray(data.lawyers)) {
+            setLawyers(data.lawyers.map(l => ({
+              id: l.user_id || l.id,
+              user_id: l.user_id || l.id,
+              name: l.name,
+              email: l.email,
+              role: 'lawyer',
+              licenseNo: l.license_no || l.licenseNo || 'Verified Bar License',
+              court: l.court || 'High Court of Delhi & Supreme Court',
+              area_of_expertise: l.area_of_expertise || 'Criminal Law & General Counsel',
+              experience_years: l.experience_years || 8,
+              hourly_rate: l.hourly_rate || 2000,
+              currency: l.currency || '₹',
+              rating: l.rating || 4.90,
+              is_available: l.is_available === true || l.is_available === 'true',
+              avatar_url: l.avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300',
+              achievements: l.achievements || '',
+              bio: l.bio || ''
+            })));
+
+            if (currentUser && currentUser.role === 'lawyer') {
+              const currentLawyer = data.lawyers.find(l => (l.user_id === currentUser.id || l.id === currentUser.id || l.email === currentUser.email));
+              if (currentLawyer) {
+                const updatedAvail = currentLawyer.is_available === true || currentLawyer.is_available === 'true';
+                if (currentUser.is_available !== updatedAvail) {
+                  setCurrentUser(prev => ({ ...prev, is_available: updatedAvail }));
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      };
+
+      // 2. Fetch User's Active Chat Sessions from Backend
+      const loadSessions = async () => {
+        if (!currentUser) return;
+        try {
+          const res = await apiCall('/chat/sessions');
+          if (res && res.success && Array.isArray(res.sessions)) {
+            const formatted = res.sessions.map(s => {
+              const partnerName = currentUser.role === 'client' ? s.lawyer_name : s.client_name;
+              const partnerAvatar = currentUser.role === 'client' 
+                ? (s.lawyer_avatar || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300')
+                : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+
+              return {
+                id: s.id,
+                client_id: s.client_id,
+                client_name: s.client_name,
+                lawyer_id: s.lawyer_id,
+                lawyer_name: s.lawyer_name,
+                partnerName,
+                partnerAvatar,
+                lawyer_court: s.lawyer_court || 'High Court of Delhi',
+                lastMessage: s.last_message || 'No messages yet.',
+                lastTime: s.last_message_time ? new Date(s.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+                status: s.status || 'Active'
+              };
+            });
+
+            setChats(formatted);
+
+            if (!activeChatId && formatted.length > 0) {
+              setActiveChatId(formatted[0].id);
+            }
+          }
+        } catch (e) {}
+      };
+
+      // 3. Fetch Messages for Current Active Session
+      const loadActiveMessages = async (sessionId, triggerChime = false) => {
+        if (!sessionId || !currentUser) return;
+        try {
+          const res = await apiCall(`/chat/sessions/${sessionId}/messages`);
+          if (res && res.success && Array.isArray(res.messages)) {
+            const msgs = res.messages.map(m => ({
+              id: m.id,
+              sender_id: m.sender_id,
+              sender_name: m.sender_name || 'Counsel',
+              sender_role: m.sender_role,
+              text: m.message_text,
+              time: m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'
+            }));
+
+            if (triggerChime && msgs.length > lastMessageCountRef.current) {
+              const lastMsg = msgs[msgs.length - 1];
+              if (lastMsg && lastMsg.sender_id !== currentUser.id) {
+                playWhatsAppChime();
+                setNotificationToast({
+                  title: `💬 New Message from ${lastMsg.sender_name}`,
+                  body: lastMsg.text,
+                  targetChatId: sessionId
+                });
+              }
+            }
+
+            lastMessageCountRef.current = msgs.length;
+            setActiveMessages(msgs);
+          }
+        } catch (e) {}
+      };
+
+      // Initial Mount & Continuous 1.5s Polling for Real-Life WhatsApp Sync
+      useEffect(() => {
+        loadLawyers();
+      }, []);
+
+      useEffect(() => {
+        if (!currentUser) return;
+        loadSessions();
+        if (activeChatId) {
+          loadActiveMessages(activeChatId, false);
+        }
+
+        const interval = setInterval(() => {
+          loadLawyers();
+          loadSessions();
+          if (activeChatId) {
+            loadActiveMessages(activeChatId, true);
+          }
+        }, 1500);
+
+        return () => clearInterval(interval);
+      }, [currentUser?.id, activeChatId]);
+
+      // =======================================================================
+      // ADVOCATE ACTIVE / INACTIVE STATUS TOGGLE
+      // =======================================================================
+      const handleToggleLawyerStatus = async () => {
+        if (!currentUser || currentUser.role !== 'lawyer') return;
+
+        const newStatus = !currentUser.is_available;
+        setCurrentUser(prev => ({ ...prev, is_available: newStatus }));
+
+        try {
+          const res = await apiCall('/agents/toggle-status', { method: 'PATCH' });
+          if (res && res.success) {
+            setCurrentUser(prev => ({ ...prev, is_available: res.is_available }));
+          }
+          await loadLawyers();
+        } catch (e) {}
+
+        setNotificationToast({
+          title: newStatus ? '🟢 Profile Activated' : '⚪ Profile Inactive (Hidden)',
+          body: newStatus 
+            ? 'Aapki profile ab Personal Agents roster me sabhi clients ko dikhegi!' 
+            : 'Aapki profile ab Personal Agents roster se hide kar di gayi hai.'
+        });
+      };
+
+      // =======================================================================
+      // AUTHENTICATION HANDLERS
+      // =======================================================================
+      const handleLogin = async (email, password) => {
+        const res = await apiCall('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), password })
+        });
+
+        if (res && res.success && res.user && res.token) {
+          localStorage.setItem('LA_JWT_TOKEN', res.token);
+          const u = {
+            ...res.user,
+            is_available: res.user.is_available === true || res.user.is_available === 'true'
+          };
+          setCurrentUser(u);
+          setCurrentTab('dashboard');
+          await loadLawyers();
+          await loadSessions();
+        } else {
+          throw new Error(res?.error || 'Invalid email or password.');
+        }
+      };
+
+      const handleGuestLogin = async (role = 'client') => {
+        try {
+          const res = await apiCall('/auth/guest-login', {
+            method: 'POST',
+            body: JSON.stringify({ role })
+          });
+
+          if (res && res.success && res.user && res.token) {
+            localStorage.setItem('LA_JWT_TOKEN', res.token);
+            setCurrentUser({
+              ...res.user,
+              is_available: res.user.is_available === true || res.user.is_available === 'true'
+            });
+            setCurrentTab('dashboard');
+            await loadLawyers();
+            await loadSessions();
+            setNotificationToast({
+              title: `Logged in as Guest ${role === 'lawyer' ? 'Advocate (वकील)' : 'Client'}`,
+              body: 'Welcome to Legal Advice chambers!'
+            });
+          }
+        } catch (e) {
+          console.error('Guest login failed:', e);
+        }
+      };
+
+      const handleRegister = async (formData) => {
+        const res = await apiCall('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(formData)
+        });
+
+        if (res && res.success && res.user && res.token) {
+          localStorage.setItem('LA_JWT_TOKEN', res.token);
+          const u = {
+            ...res.user,
+            is_available: true
+          };
+          setCurrentUser(u);
+          setCurrentTab('dashboard');
+          await loadLawyers();
+          await loadSessions();
+        } else {
+          throw new Error(res?.error || 'Registration failed.');
+        }
+      };
+
+      const handleLogout = async () => {
+        try {
+          await apiCall('/auth/logout', { method: 'POST' });
+        } catch (e) {}
+        localStorage.removeItem('LA_JWT_TOKEN');
+        setCurrentUser(null);
+        setCurrentTab('dashboard');
+        setActiveChatId(null);
+        setActiveMessages([]);
+        setProfileDropdownOpen(false);
+      };
+
+      const handleSwitchUser = async (targetRole) => {
+        await handleGuestLogin(targetRole);
+      };
+
+      // =======================================================================
+      // REAL-LIFE CHAT ACTIONS
+      // =======================================================================
+      const handleStartOrOpenChat = async (targetLawyer) => {
+        if (!currentUser) return;
+        setCurrentTab('chat');
+
+        try {
+          const res = await apiCall(`/chat/conversation/${targetLawyer.id}`);
+          if (res && res.success && res.session) {
+            setActiveChatId(res.session.id);
+            await loadSessions();
+            await loadActiveMessages(res.session.id, false);
+          }
+        } catch (e) {
+          console.error('Failed to initiate conversation:', e);
+        }
+      };
+
+      const handleSendMessage = async (sessionId, text) => {
+        if (!text.trim() || !currentUser || !sessionId || isSendingMsg) return;
+
+        setIsSendingMsg(true);
+
+        const optimisticMsg = {
+          id: `temp-${Date.now()}`,
+          sender_id: currentUser.id,
+          sender_name: currentUser.name,
+          sender_role: currentUser.role,
+          text: text.trim(),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setActiveMessages(prev => [...prev, optimisticMsg]);
+
+        try {
+          const res = await apiCall('/chat/messages', {
+            method: 'POST',
+            body: JSON.stringify({
+              session_id: sessionId,
+              message_text: text.trim()
+            })
+          });
+
+          if (res && res.success) {
+            await loadActiveMessages(sessionId, false);
+            await loadSessions();
+          }
+        } catch (e) {
+          console.error('Failed to deliver message:', e);
+        } finally {
+          setIsSendingMsg(false);
+        }
+      };
+
+      // Case and document helpers
+      const handleCreateCase = (casePayload) => {
+        const newCase = {
+          ...casePayload,
+          id: `case-${Date.now()}`,
+          client_id: currentUser.id,
+          client_name: currentUser.name,
+          status: 'Open',
+          created_at: new Date().toISOString().split('T')[0]
+        };
+        setCases(prev => [newCase, ...prev]);
+        setFileCaseModalOpen(false);
+      };
+
+      const handleUpdateCaseStatus = (caseId, newStatus) => {
+        setCases(prev => prev.map(c => c.id === caseId ? { ...c, status: newStatus } : c));
+      };
+
+      const handleAddDocument = (docPayload) => {
+        const newDoc = {
+          ...docPayload,
+          id: `doc-${Date.now()}`,
+          user_id: currentUser.id,
+          created_at: new Date().toISOString().split('T')[0]
+        };
+        setDocuments(prev => [newDoc, ...prev]);
+      };
+
+      const handleDeleteDocument = (docId) => {
+        setDocuments(prev => prev.filter(d => d.id !== docId));
+      };
+
+      // =======================================================================
+      // AUTH SCREEN OR AUTHENTICATED PORTAL
+      // =======================================================================
+      if (!currentUser) {
+        return (
+          <AuthScreen 
+            onLogin={handleLogin} 
+            onRegister={handleRegister} 
+            onGuestLogin={handleGuestLogin} 
+          />
+        );
+      }
+
+      const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
+      const isLawyer = currentUser.role === 'lawyer';
+      const isLawyerActive = isLawyer ? (currentUser.is_available === true || currentUser.is_available === 'true') : true;
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 pb-16 md:pb-0">
+          
+          {/* WhatsApp Pop-Up Notification Toast */}
+          {notificationToast && (
+            <div 
+              onClick={() => {
+                if (notificationToast.targetChatId) {
+                  setActiveChatId(notificationToast.targetChatId);
+                  setCurrentTab('chat');
+                }
+                setNotificationToast(null);
+              }}
+              className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-slate-50 animate-slideDown border-l-4 border-l-emerald-500"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
+                💬
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 truncate">{notificationToast.title}</span>
+                  <span className="text-[10px] text-emerald-600 font-bold uppercase">WhatsApp Ping</span>
+                </div>
+                <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{notificationToast.body}</p>
+                <div className="text-[10px] text-blue-600 font-semibold mt-1">Open Chat Room &rarr;</div>
+              </div>
+            </div>
+          )}
+
+          {/* ADVOCATE INACTIVE WARNING BANNER */}
+          {isLawyer && !isLawyerActive && (
+            <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-xs font-bold flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">⚠️</span>
+                <span>
+                  <strong>Advocate Notice:</strong> Aapka profile abhi <u>INACTIVE (Hidden)</u> hai. Clients aapko Personal Agents directory me nahi dekh sakte.
+                </span>
+              </div>
+              <button
+                onClick={handleToggleLawyerStatus}
+                className="px-3 py-1 bg-slate-900 hover:bg-black text-white rounded-lg text-[11px] font-extrabold shadow-xs transition"
+              >
+                🟢 Activate Profile (Show on Roster)
+              </button>
+            </div>
+          )}
+
+          {/* Header Navbar */}
+          <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                
+                {/* Brand Logo */}
+                <div 
+                  onClick={() => setCurrentTab('dashboard')} 
+                  className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
+                >
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shadow-xs group-hover:scale-105 transition-transform">
+                    <span className="text-lg sm:text-xl">⚖️</span>
+                  </div>
+                  <div>
+                    <div className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-blue-700 transition leading-tight">
+                      Legal Advice
+                    </div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-blue-600 tracking-wider uppercase flex items-center gap-1.5">
+                      <span>Live Counsel</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Database Connected"></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Navigation Tabs (Desktop) */}
+                <nav className="hidden lg:flex items-center space-x-1">
+                  {[
+                    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                    { id: 'cases', label: 'Legal Cases', icon: '📁' },
+                    { id: 'docs', label: 'My Documents', icon: '🔒' },
+                    { id: 'agents', label: 'Personal Agents', icon: '👨‍⚖️' },
+                    { id: 'chat', label: 'WhatsApp Chat', icon: '💬' },
+                    { id: 'ai', label: 'AI Legal Counsel', icon: '🤖', badge: 'Free AI' },
+                    { id: 'settings', label: 'Settings', icon: '⚙️' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setCurrentTab(tab.id)}
+                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                        currentTab === tab.id
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {tab.badge && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-emerald-500 text-white animate-pulse">
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </nav>
+
+                {/* SINGLE UNIFIED PROFILE SECTION (NO DUPLICATES) */}
+                <div className="flex items-center gap-2" ref={dropdownRef}>
+                  
+                  <div className="relative">
+                    <button
+                      onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                      className="flex items-center gap-2 sm:gap-2.5 bg-slate-100 hover:bg-slate-200/80 py-1 px-2 sm:py-1.5 sm:px-3 rounded-2xl border border-slate-200 transition focus:outline-none"
+                    >
+                      <img 
+                        src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'} 
+                        alt={currentUser.name} 
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-white shrink-0"
+                      />
+                      <div className="text-left hidden sm:block">
+                        <div className="text-xs font-extrabold text-slate-900 leading-tight truncate max-w-[120px]">
+                          {currentUser.name}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isLawyer ? 'bg-blue-600' : 'bg-emerald-500'}`}></span>
+                          <span className="text-[10px] font-extrabold uppercase text-slate-500">
+                            {isLawyer ? 'Advocate' : 'Client'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400">▼</span>
+                    </button>
+
+                    {/* Single Clean Profile Dropdown */}
+                    {profileDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 animate-fadeIn text-xs">
+                        <div className="flex items-center gap-3 p-2 pb-3 border-b border-slate-100">
+                          <img 
+                            src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'} 
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" 
+                          />
+                          <div className="overflow-hidden">
+                            <div className="text-xs font-extrabold text-slate-900 truncate">{currentUser.name}</div>
+                            <div className="text-[11px] text-slate-400 truncate">{currentUser.email}</div>
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-100 text-blue-800">
+                              {isLawyer ? 'Bar Admitted Advocate' : 'Client Profile'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Advocate Roster Visibility Switch Inside Dropdown */}
+                        {isLawyer && (
+                          <div className="p-2.5 my-1.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="flex items-center justify-between font-bold text-slate-700 mb-1.5 text-[11px]">
+                              <span>Roster Visibility:</span>
+                              <span className={isLawyerActive ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-bold'}>
+                                {isLawyerActive ? '🟢 Live on Directory' : '⚪ Hidden'}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => { handleToggleLawyerStatus(); setProfileDropdownOpen(false); }}
+                              className={`w-full py-1.5 px-2.5 rounded-lg text-[11px] font-extrabold transition flex items-center justify-center gap-1.5 ${
+                                isLawyerActive ? 'bg-amber-100 hover:bg-amber-200 text-amber-900' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
+                            >
+                              {isLawyerActive ? '⚪ Set Inactive (Hide Profile)' : '🟢 Set Active (Show to Clients)'}
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="py-1">
+                          <button
+                            onClick={() => { setCurrentTab('ai'); setProfileDropdownOpen(false); }}
+                            className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-bold flex items-center gap-2"
+                          >
+                            <span>🤖</span> NyayaAI Free Legal Assistant
+                          </button>
+
+                          <button
+                            onClick={() => { setCurrentTab('settings'); setProfileDropdownOpen(false); }}
+                            className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold flex items-center gap-2"
+                          >
+                            <span>⚙️</span> Profile & Legal Credentials
+                          </button>
+
+                          <button
+                            onClick={() => { handleSwitchUser(isLawyer ? 'client' : 'lawyer'); setProfileDropdownOpen(false); }}
+                            className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold flex items-center gap-2"
+                          >
+                            <span>⇄</span> Switch Role to {isLawyer ? 'Client (Alexander)' : 'Adv. Rahul Rawat'}
+                          </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100">
+                          <button
+                            onClick={() => { setProfileDropdownOpen(false); handleLogout(); }}
+                            className="w-full py-2 px-3 rounded-xl font-extrabold text-red-600 hover:bg-red-50 flex items-center justify-center gap-1.5 transition text-xs"
+                          >
+                            <span>🚪</span> Sign Out
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            {/* Mobile Top Sub-Header Navigation (Scrollable Horizontal) */}
+            <div className="flex lg:hidden overflow-x-auto px-4 py-2 bg-slate-100 border-t border-slate-200 space-x-2 text-xs scrollbar-none">
+              {[
+                { id: 'dashboard', label: 'Dashboard' },
+                { id: 'cases', label: 'Cases' },
+                { id: 'ai', label: '🤖 AI Bot' },
+                { id: 'docs', label: 'Vault' },
+                { id: 'agents', label: 'Agents' },
+                { id: 'chat', label: 'WhatsApp' },
+                { id: 'settings', label: 'Settings' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold text-xs ${
+                    currentTab === tab.id ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 bg-white border border-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </header>
+
+          {/* Active Tab Main Screen */}
+          <main className="flex-1 animate-fadeIn">
+            {currentTab === 'dashboard' && (
+              <DashboardView 
+                user={currentUser}
+                cases={cases}
+                docs={documents}
+                lawyers={lawyers}
+                chats={chats}
+                onOpenCaseModal={() => setFileCaseModalOpen(true)}
+                onUpdateCaseStatus={handleUpdateCaseStatus}
+                onGoToChat={(targetUser) => handleStartOrOpenChat(targetUser)}
+                onNavigate={setCurrentTab}
+                onToggleStatus={handleToggleLawyerStatus}
+              />
+            )}
+
+            {currentTab === 'cases' && (
+              <LegalCasesView 
+                categories={DEFAULT_CATEGORIES}
+                cases={cases}
+                user={currentUser}
+                lawyers={lawyers}
+                onOpenCategoryDetail={setSelectedCatModal}
+                onOpenFileCaseModal={() => setFileCaseModalOpen(true)}
+                onUpdateCaseStatus={handleUpdateCaseStatus}
+              />
+            )}
+
+            {currentTab === 'docs' && (
+              <DocumentsVaultView 
+                user={currentUser}
+                documents={documents}
+                onAddDoc={handleAddDocument}
+                onDeleteDoc={handleDeleteDocument}
+              />
+            )}
+
+            {currentTab === 'agents' && (
+              <PersonalAgentsView 
+                currentUser={currentUser}
+                lawyers={lawyers}
+                onChatNow={handleStartOrOpenChat}
+                onToggleStatus={handleToggleLawyerStatus}
+              />
+            )}
+
+            {currentTab === 'chat' && (
+              <RealLifeWhatsAppView 
+                currentUser={currentUser}
+                chats={chats}
+                activeChat={activeChat}
+                activeMessages={activeMessages}
+                allLawyers={lawyers}
+                onSelectChat={(sId) => setActiveChatId(sId)}
+                onSendMessage={(text) => handleSendMessage(activeChatId, text)}
+                onStartChatWith={handleStartOrOpenChat}
+                onQuickSwitchUser={handleSwitchUser}
+              />
+            )}
+
+            {currentTab === 'ai' && (
+              <PublicAILegalChatView 
+                currentUser={currentUser}
+              />
+            )}
+
+            {currentTab === 'settings' && (
+              <SettingsView 
+                user={currentUser} 
+                onToggleStatus={handleToggleLawyerStatus}
+              />
+            )}
+          </main>
+
+          {/* Fixed Modern Mobile Bottom Navigation Bar (iOS Safe Area Optimized) */}
+          <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 lg:hidden flex items-center justify-around py-2 px-1 text-[10px] font-bold text-slate-600 shadow-lg pb-safe">
+            <button 
+              onClick={() => setCurrentTab('dashboard')} 
+              className={`flex flex-col items-center gap-0.5 ${currentTab === 'dashboard' ? 'text-blue-600 font-extrabold' : ''}`}
+            >
+              <span className="text-lg">📊</span>
+              <span>Home</span>
+            </button>
+
+            <button 
+              onClick={() => setCurrentTab('cases')} 
+              className={`flex flex-col items-center gap-0.5 ${currentTab === 'cases' ? 'text-blue-600 font-extrabold' : ''}`}
+            >
+              <span className="text-lg">📁</span>
+              <span>Cases</span>
+            </button>
+
+            <button 
+              onClick={() => setCurrentTab('ai')} 
+              className={`flex flex-col items-center gap-0.5 relative ${currentTab === 'ai' ? 'text-blue-600 font-extrabold' : ''}`}
+            >
+              <span className="text-lg">🤖</span>
+              <span>NyayaAI</span>
+              <span className="absolute -top-1 right-0 w-2 h-2 rounded-full bg-emerald-500"></span>
+            </button>
+
+            <button 
+              onClick={() => setCurrentTab('chat')} 
+              className={`flex flex-col items-center gap-0.5 ${currentTab === 'chat' ? 'text-blue-600 font-extrabold' : ''}`}
+            >
+              <span className="text-lg">💬</span>
+              <span>WhatsApp</span>
+            </button>
+
+            <button 
+              onClick={() => setCurrentTab('agents')} 
+              className={`flex flex-col items-center gap-0.5 ${currentTab === 'agents' ? 'text-blue-600 font-extrabold' : ''}`}
+            >
+              <span className="text-lg">👨‍⚖️</span>
+              <span>Agents</span>
+            </button>
+          </div>
+
+          {/* Category Details Modal */}
+          {selectedCatModal && (
+            <CategoryDetailModal 
+              category={selectedCatModal}
+              onClose={() => setSelectedCatModal(null)}
+              onFileCase={() => {
+                setSelectedCatModal(null);
+                setFileCaseModalOpen(true);
+              }}
+            />
+          )}
+
+          {/* File New Case Modal */}
+          {fileCaseModalOpen && (
+            <FileCaseModal 
+              categories={DEFAULT_CATEGORIES}
+              lawyers={lawyers}
+              onClose={() => setFileCaseModalOpen(false)}
+              onSubmit={handleCreateCase}
+            />
+          )}
+
+          <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 py-6 sm:py-8 mt-12 text-xs">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span>⚖️</span>
+                <span className="font-bold text-white">Legal Advice Platform</span>
+                <span className="text-slate-500">• Bar Council Network • Gemini AI Counsel</span>
+              </div>
+              <div className="text-slate-400">
+                Logged in as <strong className="text-white">{currentUser.name}</strong> ({currentUser.role.toUpperCase()})
+              </div>
+              <div className="text-slate-500">&copy; 2026 Legal Advice Platform.</div>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // DEDICATED AUTH SCREEN (With Instant Guest Client & Advocate Entry)
+    // =========================================================================
+    function AuthScreen({ onLogin, onRegister, onGuestLogin }) {
+      const [mode, setMode] = useState('guest');
+      const [role, setRole] = useState('client');
+      const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        licenseNo: '',
+        court: 'High Court of Delhi & Supreme Court',
+        area_of_expertise: 'Criminal Law & Bail Specialist',
+        experience_years: 8,
+        hourly_rate: 2000,
+        bio: '',
+        achievements: '',
+        avatar_url: ''
+      });
+
+      const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError('');
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+          if (mode === 'login') {
+            await onLogin(formData.email, formData.password);
+          } else if (mode === 'register') {
+            let avatar = formData.avatar_url;
+            if (!avatar) {
+              avatar = role === 'lawyer'
+                ? 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300'
+                : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=300';
+            }
+
+            await onRegister({
+              ...formData,
+              role,
+              avatar_url: avatar,
+              experience_years: Number(formData.experience_years) || 5,
+              hourly_rate: Number(formData.hourly_rate) || 2000
+            });
+          }
+        } catch (err) {
+          setError(err.message || 'An error occurred during authentication.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 text-slate-800">
+          <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+            
+            {/* Header Banner */}
+            <div className="bg-slate-900 text-white p-6 sm:p-8 text-center relative border-b border-blue-900/60">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600/30 border border-blue-500/40 text-3xl mb-3 shadow-inner">
+                ⚖️
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Legal Advice Platform</h1>
+              <p className="text-xs text-blue-200 mt-1 max-w-sm mx-auto">
+                Real-Life Advocate & Client Chambers with Gemini AI
+              </p>
+
+              {/* Mode Toggle Tabs */}
+              <div className="flex bg-slate-800/80 p-1 rounded-2xl max-w-md mx-auto mt-6 border border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => { setMode('guest'); setError(''); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                    mode === 'guest' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ⚡ Fast Guest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('login'); setError(''); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                    mode === 'login' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('register'); setError(''); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                    mode === 'register' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Register
+                </button>
+              </div>
+            </div>
+
+            {/* INSTANT ONE-CLICK GUEST ACCESS SECTION */}
+            {mode === 'guest' ? (
+              <div className="p-6 sm:p-8 space-y-6">
+                <div className="text-center">
+                  <span className="text-[11px] font-extrabold uppercase text-blue-600 tracking-wider">
+                    Instant One-Click Entry
+                  </span>
+                  <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
+                    Choose How You Want to Enter
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    No password or registration required. Test all full-stack features immediately!
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => onGuestLogin('client')}
+                    className="w-full p-4 rounded-2xl border-2 border-blue-200 hover:border-blue-600 bg-blue-50/40 hover:bg-blue-50 hover:shadow-md transition text-left flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition">
+                        🛡️
+                      </div>
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900">Enter as Guest Client</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Consult advocates, chat on WhatsApp, file petitions</div>
+                      </div>
+                    </div>
+                    <span className="text-blue-600 font-extrabold text-xs group-hover:translate-x-1 transition">Enter &rarr;</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onGuestLogin('lawyer')}
+                    className="w-full p-4 rounded-2xl border-2 border-emerald-200 hover:border-emerald-600 bg-emerald-50/40 hover:bg-emerald-50 hover:shadow-md transition text-left flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition">
+                        ⚖️
+                      </div>
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900">Enter as Guest Advocate (वकील)</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Adv. Rahul Rawat, High Court of Delhi Bar Chambers</div>
+                      </div>
+                    </div>
+                    <span className="text-emerald-700 font-extrabold text-xs group-hover:translate-x-1 transition">Enter &rarr;</span>
+                  </button>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-center gap-4 text-xs text-slate-500">
+                  <span>Have an existing account?</span>
+                  <button 
+                    onClick={() => setMode('login')} 
+                    className="text-blue-600 font-bold hover:underline"
+                  >
+                    Sign In with Email
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Regular Credentials Form (Login / Register) */
+              <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-4">
+                
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                    <span>⚠️</span> {error}
+                  </div>
+                )}
+
+                {mode === 'register' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                      I Am Registering As:
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setRole('client')}
+                        className={`p-3 rounded-2xl border text-left transition flex items-center gap-2.5 ${
+                          role === 'client' 
+                            ? 'border-blue-600 bg-blue-50/80 text-blue-950 font-extrabold ring-2 ring-blue-600/30' 
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-xl">🛡️</span>
+                        <div>
+                          <div className="text-xs">Client</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Need Legal Help</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRole('lawyer')}
+                        className={`p-3 rounded-2xl border text-left transition flex items-center gap-2.5 ${
+                          role === 'lawyer' 
+                            ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 font-extrabold ring-2 ring-emerald-600/30' 
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-xl">🏛️</span>
+                        <div>
+                          <div className="text-xs">Advocate (वकील)</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Bar Council Roster</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {mode === 'register' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {role === 'lawyer' ? 'Advocate Full Name (e.g. Adv. Rahul Rawat)' : 'Full Legal Name'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      name="name"
+                      placeholder={role === 'lawyer' ? 'Adv. Your Full Name' : 'John Doe'}
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    name="email"
+                    placeholder="name@chambers.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    name="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                {mode === 'register' && role === 'lawyer' && (
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div className="text-[11px] font-extrabold uppercase text-emerald-800 tracking-wider">
+                      🏛️ Advocate Bar Council & Practice Dossier
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Bar Council License No.</label>
+                        <input
+                          type="text"
+                          required
+                          name="licenseNo"
+                          placeholder="e.g. D/1482/2018"
+                          value={formData.licenseNo}
+                          onChange={handleChange}
+                          className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Primary Court Chambers</label>
+                        <input
+                          type="text"
+                          required
+                          name="court"
+                          placeholder="e.g. Delhi High Court / Supreme Court"
+                          value={formData.court}
+                          onChange={handleChange}
+                          className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Primary Specialty</label>
+                        <select
+                          name="area_of_expertise"
+                          value={formData.area_of_expertise}
+                          onChange={handleChange}
+                          className="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                        >
+                          <option value="Criminal Law & Bail Specialist">Criminal Law & Bail</option>
+                          <option value="Corporate & Business Law">Corporate & Business</option>
+                          <option value="Family Law & Custody">Family & Divorce</option>
+                          <option value="Real Estate & Property">Property & Real Estate</option>
+                          <option value="Employment & Labor Law">Employment & Labor</option>
+                          <option value="Accident & Personal Injury">Personal Injury (MACT)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Experience (Years)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          name="experience_years"
+                          value={formData.experience_years}
+                          onChange={handleChange}
+                          className="w-full text-xs p-2 border border-slate-300 rounded-lg"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Fee (₹ / Hour)</label>
+                        <input
+                          type="number"
+                          min="500"
+                          step="100"
+                          name="hourly_rate"
+                          value={formData.hourly_rate}
+                          onChange={handleChange}
+                          className="w-full text-xs p-2 border border-slate-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 rounded-xl font-extrabold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition text-xs sm:text-sm mt-4"
+                >
+                  {loading
+                    ? 'Verifying...'
+                    : mode === 'login'
+                    ? 'Access Privileged Chambers'
+                    : 'Register Account'}
+                </button>
+
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode('guest')}
+                    className="text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    ← Back to Instant Guest Login
+                  </button>
+                </div>
+              </form>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION: PUBLIC AI LEGAL CHATBOT (POWERED BY GOOGLE GEMINI API)
+    // =========================================================================
+    function PublicAILegalChatView({ currentUser }) {
+      const [messages, setMessages] = useState([
+        {
+          id: 'ai-init',
+          role: 'ai',
+          text: `### ⚖️ Namaste! I am NyayaAI Legal Counsel
+I am your 24/7 intelligent legal advisor specialized in:
+* **Criminal Law:** Bail (Sec 438 CrPC / 482 BNSS), FIR Quashing, BNS Offences
+* **Civil & Commercial:** Legal Notice Drafting, Sec 138 Cheque Bounce, Order 37 CPC
+* **Family Law:** Mutual Consent Divorce, Child Custody, Maintenance & Alimony
+* **Property & RERA:** Builder Possession Delays, Sale Deeds, Tenant Eviction
+* **Employment Law:** Severance Packages, Wrongful Termination, Non-Compete Validity
+
+You can ask any legal question for free, or configure your **Google Gemini API Key** for live web intelligence.`
+        }
+      ]);
+
+      const [inputPrompt, setInputPrompt] = useState('');
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem(STORAGE_KEY_GEMINI) || '');
+      const [keyInput, setKeyInput] = useState(apiKey);
+      const [showConfig, setShowConfig] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const messagesEndRef = useRef(null);
+
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages]);
+
+      const handleSaveKey = (e) => {
+        e.preventDefault();
+        const trimmed = keyInput.trim();
+        setApiKey(trimmed);
+        if (trimmed) {
+          localStorage.setItem(STORAGE_KEY_GEMINI, trimmed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY_GEMINI);
+        }
+        setShowConfig(false);
+      };
+
+      const handleSendAI = async (textToSend) => {
+        const query = textToSend || inputPrompt;
+        if (!query || !query.trim() || isLoading) return;
+
+        const userMsg = { id: `usr-${Date.now()}`, role: 'user', text: query.trim() };
+        setMessages(prev => [...prev, userMsg]);
+        setInputPrompt('');
+        setIsLoading(true);
+
+        try {
+          const res = await apiCall('/ai/chat', {
+            method: 'POST',
+            body: JSON.stringify({
+              prompt: query.trim(),
+              apiKey: apiKey.trim(),
+              history: messages.slice(-6)
+            })
+          });
+
+          if (res && res.success && res.text) {
+            setMessages(prev => [...prev, {
+              id: `ai-${Date.now()}`,
+              role: 'ai',
+              text: res.text,
+              source: res.source
+            }]);
+          } else {
+            setMessages(prev => [...prev, {
+              id: `err-${Date.now()}`,
+              role: 'ai',
+              text: `⚠️ **Unable to complete inquiry:** ${res?.error || 'Service temporarily unavailable. Please try again or check your Gemini API key.'}`
+            }]);
+          }
+        } catch (e) {
+          setMessages(prev => [...prev, {
+            id: `err-${Date.now()}`,
+            role: 'ai',
+            text: '⚠️ An unexpected error occurred while consulting NyayaAI.'
+          }]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const promptChips = [
+        'How to apply for Anticipatory Bail under Sec 438 CrPC?',
+        'Draft legal notice for unpaid money recovery',
+        'Can employer enforce non-compete clause in India?',
+        'What are homebuyer remedies for delayed flat under RERA?',
+        'Mutual consent divorce procedure and cooling-off waiver'
+      ];
+
+      return (
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 animate-fadeIn">
+          
+          {/* Top AI Header Banner with Key Config */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 mb-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-2xl shadow-inner">
+                🤖
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-extrabold">NyayaAI Legal Assistant</h2>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-emerald-500 text-white">
+                    {apiKey ? 'Gemini 3.5 Live AI' : 'Free Legal Engine'}
+                  </span>
+                </div>
+                <p className="text-xs text-blue-200 mt-0.5">
+                  Instant Statutory Research, Legal Drafts & Jurisprudence Analysis
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowConfig(!showConfig)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 transition flex items-center gap-1.5 shrink-0"
+            >
+              <span>🔑</span>
+              <span>{apiKey ? 'API Key Configured' : 'Configure Gemini Key'}</span>
+            </button>
+          </div>
+
+          {/* Gemini API Key Configuration Panel */}
+          {showConfig && (
+            <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-md mb-6 animate-slideDown">
+              <div className="flex items-start justify-between pb-3 border-b border-slate-100 mb-4">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <span>🔑</span> Google Gemini API Key Setup (Free)
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Connect your free Gemini API key to enable live reasoning and customized document drafting.
+                  </p>
+                </div>
+                <button onClick={() => setShowConfig(false)} className="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+              </div>
+
+              <form onSubmit={handleSaveKey} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
+                  <input
+                    type="password"
+                    placeholder="AIzaSy..."
+                    value={keyInput}
+                    onChange={(e) => setKeyInput(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    <span>Get a Free Key from Google AI Studio &rarr;</span>
+                  </a>
+
+                  <div className="flex items-center gap-2">
+                    {apiKey && (
+                      <button
+                        type="button"
+                        onClick={() => { setApiKey(''); setKeyInput(''); localStorage.removeItem(STORAGE_KEY_GEMINI); }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50"
+                      >
+                        Remove Key
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-xs"
+                    >
+                      Save Key
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Quick Prompt Suggestion Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+            {promptChips.map((chip, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendAI(chip)}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-xs font-semibold whitespace-nowrap transition shadow-2xs shrink-0"
+              >
+                💡 {chip}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Conversation Box */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-[65vh]">
+            
+            {/* Messages Display Area */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50">
+              {messages.map(m => {
+                const isUser = m.role === 'user';
+                return (
+                  <div key={m.id} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    {!isUser && (
+                      <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-xs">
+                        ⚖️
+                      </div>
+                    )}
+
+                    <div className={`max-w-2xl rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-xs ${
+                      isUser
+                        ? 'bg-slate-900 text-white rounded-tr-xs'
+                        : 'bg-white text-slate-800 border border-slate-200 rounded-tl-xs'
+                    }`}>
+                      <div className="whitespace-pre-wrap">{m.text}</div>
+                      
+                      {!isUser && (
+                        <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                          <span>{m.source && m.source !== 'nyaya-legal-engine' ? `Google Gemini (${m.source})` : 'NyayaAI Jurisprudence Engine'}</span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(m.text); alert('Legal advice copied to clipboard!'); }}
+                            className="text-blue-600 font-bold hover:underline"
+                          >
+                            Copy Advice
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isUser && (
+                      <img
+                        src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'}
+                        className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              {isLoading && (
+                <div className="flex items-center gap-2 text-xs text-blue-600 font-bold p-3">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+                  <span>NyayaAI is analyzing legal provisions...</span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Form Bar */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSendAI(); }} className="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Ask any legal question (e.g. bail provisions, notice draft, RERA remedies)..."
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                className="flex-1 py-2.5 px-4 text-xs sm:text-sm bg-slate-100 rounded-2xl border-none focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !inputPrompt.trim()}
+                className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5 shrink-0"
+              >
+                <span>Ask AI</span> <span>➤</span>
+              </button>
+            </form>
+
+          </div>
+
+          <div className="mt-2 text-center text-[10px] text-slate-400">
+            NyayaAI provides legal statutory research and draft suggestions. For filing in court, consult our verified human advocates.
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 1: DASHBOARD VIEW
+    // =========================================================================
+    function DashboardView({ user, cases, docs, lawyers, chats, onOpenCaseModal, onUpdateCaseStatus, onGoToChat, onNavigate, onToggleStatus }) {
+      const isLawyer = user.role === 'lawyer';
+      const isLawyerActive = isLawyer ? (user.is_available === true || user.is_available === 'true') : true;
+
+      const filteredCases = isLawyer 
+        ? cases.filter(c => c.lawyer_id === user.id || c.lawyer_name?.toLowerCase().includes(user.name.toLowerCase()))
+        : cases.filter(c => c.client_id === user.id);
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
+          
+          {/* Welcome Dossier Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 mb-8 shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <img 
+                  src={user.avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300'} 
+                  alt={user.name} 
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-400 shrink-0"
+                />
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-blue-600/60 text-blue-100">
+                      {isLawyer ? `🏛️ Bar Admitted Advocate: ${user.licenseNo || 'Verified'}` : '🛡️ Client Legal Chambers'}
+                    </span>
+                    {isLawyer && (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${isLawyerActive ? 'bg-emerald-500/80 text-white' : 'bg-amber-400 text-slate-900'}`}>
+                        {isLawyerActive ? '● Live on Roster' : '○ Hidden from Directory'}
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold">{user.name}</h1>
+                  <p className="text-xs text-blue-200 mt-0.5">
+                    {isLawyer 
+                      ? `${user.court || 'High Court'} • Fee: ${user.currency || '₹'}${user.hourly_rate || 2500}/hr • ${user.experience_years || 10}+ Years Standing`
+                      : 'Active client account with end-to-end privileged access to verified attorneys.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {isLawyer ? (
+                  <>
+                    <button
+                      onClick={onToggleStatus}
+                      className={`px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition flex items-center gap-1.5 ${
+                        isLawyerActive 
+                          ? 'bg-amber-500 hover:bg-amber-600 text-slate-900'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      }`}
+                    >
+                      {isLawyerActive ? '⚪ Go Inactive (Hide Profile)' : '🟢 Go Active (Show on Roster)'}
+                    </button>
+                    <button 
+                      onClick={() => onNavigate('chat')}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5"
+                    >
+                      💬 WhatsApp Inquiries
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={onOpenCaseModal}
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md"
+                    >
+                      + File Legal Case
+                    </button>
+                    <button 
+                      onClick={() => onNavigate('ai')}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-bold text-xs shadow-md flex items-center gap-1"
+                    >
+                      <span>🤖</span> Consult NyayaAI
+                    </button>
+                    <button 
+                      onClick={() => onNavigate('agents')}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md"
+                    >
+                      👨‍⚖️ Consult Advocates
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase text-slate-400">Total Legal Matters</div>
+              <div className="text-2xl font-black text-slate-900 mt-1">{filteredCases.length}</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase text-slate-400">Active Consultations</div>
+              <div className="text-2xl font-black text-emerald-600 mt-1">{chats.length}</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase text-slate-400">Evidentiary Vault</div>
+              <div className="text-2xl font-black text-blue-600 mt-1">{docs.length} Files</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase text-slate-400">
+                {isLawyer ? 'Your Roster Status' : 'Available Advocates'}
+              </div>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {isLawyer 
+                  ? (isLawyerActive ? '🟢 Live' : '⚪ Hidden') 
+                  : `${lawyers.filter(l => l.is_available === true || l.is_available === 'true').length} Advocates`}
+              </div>
+            </div>
+          </div>
+
+          {/* Active Matters Feed */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-8">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Privileged Case Files</h3>
+                <p className="text-xs text-slate-500">Track petitions, FIR quashings, and active legal dockets</p>
+              </div>
+              <button 
+                onClick={() => onNavigate('cases')}
+                className="text-xs font-bold text-blue-600 hover:underline"
+              >
+                View Legal Cases Roster &rarr;
+              </button>
+            </div>
+
+            {filteredCases.length === 0 ? (
+              <div className="text-center py-12 text-slate-400 text-xs">
+                No active case filings found. File a new petition to commence representation.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 font-extrabold uppercase text-[10px]">
+                      <th className="pb-3">Docket Title</th>
+                      <th className="pb-3">Category</th>
+                      <th className="pb-3">{isLawyer ? 'Petitioner Client' : 'Retained Counsel'}</th>
+                      <th className="pb-3">Urgency</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredCases.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/80 transition">
+                        <td className="py-3.5 font-bold text-slate-900">{c.title}</td>
+                        <td className="py-3.5 capitalize font-semibold text-slate-600">{c.category_slug.replace('-', ' ')}</td>
+                        <td className="py-3.5 font-semibold text-slate-800">{isLawyer ? c.client_name : c.lawyer_name}</td>
+                        <td className="py-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                            c.priority === 'High' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {c.priority}
+                          </span>
+                        </td>
+                        <td className="py-3.5">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <button 
+                            onClick={() => onNavigate('chat')}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
+                          >
+                            💬 Chat
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 2: LEGAL CASES (LAW CATEGORIES)
+    // =========================================================================
+    function LegalCasesView({ categories, cases, user, lawyers, onOpenCategoryDetail, onOpenFileCaseModal, onUpdateCaseStatus }) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fadeIn">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-200">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Legal Practice Domains</span>
+              <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Legal Cases & Statutory Categories</h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Explore law categories, initiate legal defense, or retain specialized legal counsel.
+              </p>
+            </div>
+            <button
+              onClick={onOpenFileCaseModal}
+              className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition"
+            >
+              + File New Legal Case
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categories.map(cat => (
+              <div 
+                key={cat.slug} 
+                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl p-3 bg-blue-50 border border-blue-100 rounded-2xl group-hover:scale-110 transition-transform">
+                      {cat.icon}
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                      Verified Domain
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition">
+                    {cat.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                    {cat.shortDesc}
+                  </p>
+
+                  <div className="space-y-1.5 mb-6">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Key Proceedings:</div>
+                    {cat.services.slice(0, 3).map((srv, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-700">
+                        <span className="text-blue-500 text-[10px]">●</span>
+                        <span className="truncate">{srv}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    onClick={() => onOpenCategoryDetail(cat)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 transition"
+                  >
+                    View Guidelines &rarr;
+                  </button>
+                  <button
+                    onClick={onOpenFileCaseModal}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-blue-600 text-white font-bold text-[11px] transition"
+                  >
+                    File Petition
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 3: MY DOCUMENTS VAULT
+    // =========================================================================
+    function DocumentsVaultView({ user, documents, onAddDoc, onDeleteDoc }) {
+      const [fileName, setFileName] = useState('');
+      const [fileType, setFileType] = useState('PDF');
+      const fileInputRef = useRef(null);
+
+      const handleUpload = (e) => {
+        e.preventDefault();
+        if (!fileName.trim()) return;
+
+        onAddDoc({
+          name: fileName.trim(),
+          mime_type: fileType,
+          size: `${(Math.random() * 2 + 0.4).toFixed(1)} MB`
+        });
+
+        setFileName('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fadeIn">
+          
+          <div className="mb-8 pb-6 border-b border-slate-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Encrypted Repository</span>
+            <h1 className="text-3xl font-extrabold text-slate-900 mt-1">My Legal Documents Vault</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Store and manage privileged case pleadings, affidavits, FIR annexures, and title exhibits securely.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-8">
+            <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <span>📤</span> Deposit Document into Evidence Vault
+            </h3>
+
+            <form onSubmit={handleUpload} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Exhibit Name / Description</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Agreement_To_Sell_Stamped.pdf"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Document Format</label>
+                <select
+                  value={fileType}
+                  onChange={(e) => setFileType(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600"
+                >
+                  <option value="PDF">PDF Pleadings (.pdf)</option>
+                  <option value="DOCX">Legal Draft (.docx)</option>
+                  <option value="SCAN">Certified Scan (.jpg/.png)</option>
+                </select>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition text-xs"
+                >
+                  Deposit Exhibit
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <span>🔒</span> Deposited Documents ({documents.length})
+            </h3>
+
+            {documents.length === 0 ? (
+              <div className="text-center py-12 text-xs text-slate-400">Vault is empty. Deposit files above.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {documents.map(doc => (
+                  <div key={doc.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-2xl">📄</span>
+                        <div className="overflow-hidden">
+                          <h4 className="text-xs font-bold text-slate-900 truncate" title={doc.name}>{doc.name}</h4>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{doc.size} • Deposited {doc.created_at}</div>
+                          <span className="inline-block mt-1 text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                            {doc.mime_type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
+                      <button 
+                        onClick={() => alert(`Opening secure view of ${doc.name}...`)}
+                        className="text-blue-600 font-bold hover:underline"
+                      >
+                        Inspect Exhibit
+                      </button>
+                      <button 
+                        onClick={() => onDeleteDoc(doc.id)}
+                        className="text-red-600 font-bold hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 4: PERSONAL AGENTS (LAWYERS DIRECTORY WITH VISIBILITY CONTROL)
+    // =========================================================================
+    function PersonalAgentsView({ currentUser, lawyers, onChatNow, onToggleStatus }) {
+      const [filter, setFilter] = useState('All');
+      const [searchQuery, setSearchQuery] = useState('');
+
+      const isLawyer = currentUser && currentUser.role === 'lawyer';
+
+      const filtered = lawyers.filter(l => {
+        const isSelf = currentUser && (currentUser.id === l.id || currentUser.id === l.user_id);
+        const isActive = l.is_available === true || l.is_available === 'true';
+
+        // Visibility Rule: Clients only see active lawyers. Lawyers see active lawyers + self
+        if (!isSelf && !isActive) {
+          return false;
+        }
+
+        const matchesCategory = filter === 'All' || l.area_of_expertise?.toLowerCase().includes(filter.toLowerCase());
+        const matchesSearch = !searchQuery.trim() || 
+          (l.name && l.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (l.area_of_expertise && l.area_of_expertise.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (l.court && l.court.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (l.licenseNo && l.licenseNo.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        return matchesCategory && matchesSearch;
+      });
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fadeIn">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-200">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Bar Council Verified Network</span>
+              <h1 className="text-3xl font-extrabold text-slate-900 mt-1">Personal Legal Agents (Advocates)</h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Browse verified advocate dossiers, Bar Council license standings, trial achievements, and initiate direct consultation.
+              </p>
+            </div>
+
+            <div className="relative w-full md:w-80">
+              <input
+                type="text"
+                placeholder="Search advocate name, court, or specialty..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs py-2.5 pl-4 pr-10 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white shadow-2xs"
+              />
+              <span className="absolute right-3 top-2.5 text-slate-400">🔍</span>
+            </div>
+          </div>
+
+          {/* LAWYER STATUS NOTICE IF LOGGED-IN LAWYER IS INACTIVE */}
+          {isLawyer && (currentUser.is_available === false || currentUser.is_available === 'false') && (
+            <div className="mb-6 bg-amber-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <strong className="block text-sm font-extrabold">Your Profile is Currently INACTIVE & Hidden from Clients!</strong>
+                  <span>Clients cannot see your profile in this Personal Agents directory until you activate your status.</span>
+                </div>
+              </div>
+              <button
+                onClick={onToggleStatus}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-xs transition shrink-0"
+              >
+                🟢 Activate My Profile Now
+              </button>
+            </div>
+          )}
+
+          {/* Category Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-none">
+            {['All', 'Criminal Law', 'Business Law', 'Family Law', 'Real Estate', 'Employment Law', 'Personal Injury'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  filter === f
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Advocates Cards Grid */}
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center">
+              <span className="text-4xl block mb-2">👨‍⚖️</span>
+              <h3 className="text-base font-bold text-slate-800">No active advocates found matching your query.</h3>
+              <p className="text-xs text-slate-500 mt-1">Advocates who are currently inactive or taking time off are hidden from the directory.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map(lawyer => {
+                const isSelf = currentUser && (currentUser.id === lawyer.id || currentUser.id === lawyer.user_id);
+                const isLawyerOnline = lawyer.is_available === true || lawyer.is_available === 'true';
+
+                return (
+                  <div 
+                    key={lawyer.id} 
+                    className={`bg-white rounded-3xl border transition-all duration-300 flex flex-col justify-between overflow-hidden ${
+                      isSelf ? 'border-blue-400 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 hover:shadow-xl'
+                    }`}
+                  >
+                    <div className="p-6">
+                      
+                      {/* Top Bar with License & Online Status */}
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                          {lawyer.licenseNo || 'Verified Advocate'}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${isLawyerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                          <span className="text-[10px] font-extrabold text-slate-600 uppercase">
+                            {isLawyerOnline ? 'Accepting Cases' : 'Away / Inactive'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Advocate Info */}
+                      <div className="flex items-start gap-4 mb-4">
+                        <img 
+                          src={lawyer.avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300'} 
+                          alt={lawyer.name} 
+                          className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0"
+                        />
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                            {lawyer.name}
+                          </h3>
+                          <div className="text-xs font-bold text-blue-600 mt-0.5">
+                            {lawyer.area_of_expertise}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            {lawyer.court || 'High Court of Delhi'} • {lawyer.experience_years || 8}+ Yrs Standing
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-600 line-clamp-3 mb-4 leading-relaxed">
+                        {lawyer.bio || 'Admitted advocate with extensive litigation background and trial representation.'}
+                      </p>
+
+                      {lawyer.achievements && (
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 font-semibold mb-4">
+                          🏆 {lawyer.achievements}
+                        </div>
+                      )}
+
+                      {/* Self Inactive Alert on Card */}
+                      {isSelf && !isLawyerOnline && (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 font-bold mb-3 flex items-center justify-between">
+                          <span>⚠️ Hidden from public clients</span>
+                          <button onClick={onToggleStatus} className="text-blue-600 underline">Activate</button>
+                        </div>
+                      )}
+
+                    </div>
+
+                    {/* Bottom Fee & Chat Now Bar */}
+                    <div className="p-6 pt-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Consultation Fee</div>
+                        <div className="text-sm font-extrabold text-slate-900">
+                          {lawyer.currency || '₹'}{lawyer.hourly_rate || 2000}/hr
+                        </div>
+                      </div>
+
+                      {isSelf ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-400 bg-slate-200 py-1.5 px-3 rounded-xl">
+                            Your Profile
+                          </span>
+                          <button
+                            onClick={onToggleStatus}
+                            className="text-[10px] font-bold text-blue-600 underline hover:text-blue-800"
+                          >
+                            {isLawyerOnline ? 'Set Inactive' : 'Set Active'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => onChatNow(lawyer)}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition"
+                        >
+                          <span>💬</span> Chat Now
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 5: REAL-LIFE WHATSAPP CHAT (PURE HUMAN TO HUMAN - ZERO BOTS)
+    // =========================================================================
+    function RealLifeWhatsAppView({ currentUser, chats, activeChat, activeMessages, allLawyers, onSelectChat, onSendMessage, onStartChatWith, onQuickSwitchUser }) {
+      const [inputMsg, setInputMsg] = useState('');
+      const [filterChat, setFilterChat] = useState('');
+      const [mobileShowChat, setMobileShowChat] = useState(false);
+      const messagesEndRef = useRef(null);
+
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [activeMessages]);
+
+      const handleSend = (e) => {
+        e.preventDefault();
+        if (!inputMsg.trim() || !activeChat) return;
+        onSendMessage(inputMsg.trim());
+        setInputMsg('');
+      };
+
+      const visibleChats = chats.filter(c => {
+        return !filterChat.trim() || (c.partnerName && c.partnerName.toLowerCase().includes(filterChat.toLowerCase()));
+      });
+
+      const isMeClient = currentUser.role === 'client';
+      const otherUserRole = isMeClient ? 'lawyer' : 'client';
+
+      return (
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6 animate-fadeIn">
+          
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row h-[78vh]">
+            
+            {/* Left WhatsApp Sidebar */}
+            <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-slate-50 ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+              
+              {/* WhatsApp Profile Top Bar */}
+              <div className="p-3.5 sm:p-4 bg-[#075E54] text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'} 
+                    alt={currentUser.name} 
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40"
+                  />
+                  <div>
+                    <h3 className="text-xs font-bold leading-tight">{currentUser.name}</h3>
+                    <div className="text-[10px] text-emerald-200 font-extrabold uppercase">
+                      ● Active Now ({currentUser.role === 'lawyer' ? 'Advocate' : 'Client'})
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xl">📱</span>
+              </div>
+
+              {/* Chat Search Box */}
+              <div className="p-3 border-b border-slate-200 bg-white">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={filterChat}
+                    onChange={(e) => setFilterChat(e.target.value)}
+                    className="w-full text-xs py-2 pl-3 pr-8 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                  <span className="absolute right-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                </div>
+              </div>
+
+              {/* Chat List */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {visibleChats.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-slate-400">
+                    No conversations yet. Choose an advocate below to start chatting!
+                  </div>
+                ) : (
+                  visibleChats.map(c => {
+                    const isSelected = activeChat?.id === c.id;
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => { onSelectChat(c.id); setMobileShowChat(true); }}
+                        className={`p-3 rounded-2xl cursor-pointer transition flex items-center gap-3 ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white shadow-sm'
+                            : 'hover:bg-slate-200/60 bg-white text-slate-800 border border-slate-100'
+                        }`}
+                      >
+                        <div className="relative">
+                          <img src={c.partnerAvatar} alt={c.partnerName} className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover shrink-0" />
+                          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+                        </div>
+
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold truncate">{c.partnerName}</h4>
+                            <span className={`text-[10px] ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                              {c.lastTime}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p className={`text-[11px] truncate ${isSelected ? 'text-emerald-100' : 'text-slate-500'}`}>
+                              {c.lastMessage}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* Direct Advocate Consultation Contacts */}
+                <div className="pt-4 px-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-2">Advocate Directory Roster</div>
+                  <div className="space-y-1">
+                    {allLawyers.filter(l => l.id !== currentUser.id && (l.is_available === true || l.is_available === 'true')).slice(0, 4).map(l => (
+                      <button
+                        key={l.id}
+                        onClick={() => { onStartChatWith(l); setMobileShowChat(true); }}
+                        className="w-full text-left p-2 rounded-xl text-xs text-slate-700 bg-white hover:bg-emerald-50 border border-slate-100 flex items-center justify-between"
+                      >
+                        <span className="truncate font-semibold">{l.name}</span>
+                        <span className="text-[10px] font-bold text-emerald-600 shrink-0">Chat</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Right WhatsApp Chat Area */}
+            {activeChat ? (
+              <div className={`flex-1 flex flex-col bg-[#EFEAE2] ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+                
+                {/* WhatsApp Chat Top Header */}
+                <div className="p-3 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Mobile Back Button to Conversations */}
+                    <button
+                      onClick={() => setMobileShowChat(false)}
+                      className="md:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 font-extrabold text-sm"
+                    >
+                      ←
+                    </button>
+
+                    <img 
+                      src={activeChat.partnerAvatar} 
+                      alt="avatar" 
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-slate-200"
+                    />
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                        {activeChat.partnerName}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-600 font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        {isMeClient ? `${activeChat.lawyer_court || 'High Court of Delhi'}` : 'Petitioner Client'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">
+                      🔒 Privileged Chat
+                    </span>
+                  </div>
+                </div>
+
+                {/* WhatsApp Message Bubbles Area */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2.5 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:18px_18px]">
+                  <div className="text-center my-1">
+                    <span className="px-3 py-1 rounded-full bg-white/90 border border-slate-200 text-[10px] font-bold text-slate-500 shadow-2xs">
+                      🔒 Messages are end-to-end encrypted under Bar Council Rules
+                    </span>
+                  </div>
+
+                  {activeMessages.map(m => {
+                    const isMe = m.sender_id === currentUser.id;
+                    return (
+                      <div 
+                        key={m.id} 
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                      >
+                        <div className="text-[10px] text-slate-500 mb-0.5 px-1 font-semibold">
+                          {m.sender_name}
+                        </div>
+
+                        {/* WhatsApp Styled Bubble */}
+                        <div className={`max-w-[85%] sm:max-w-lg rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs ${
+                          isMe
+                            ? 'bg-[#DCF8C6] text-slate-900 rounded-tr-xs'
+                            : 'bg-white text-slate-900 border border-slate-200/80 rounded-tl-xs'
+                        }`}>
+                          <div>{m.text}</div>
+                          <div className="text-[10px] mt-1 flex items-center justify-end gap-1 text-slate-500 font-medium">
+                            <span>{m.time}</span>
+                            <span className="text-[#34B7F1] font-bold">✓✓</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* WhatsApp Input Bar */}
+                <form onSubmit={handleSend} className="p-2.5 sm:p-3 sm:px-4 bg-[#F0F2F5] border-t border-slate-200 flex items-center gap-2">
+                  <div className="text-lg text-slate-500 cursor-pointer px-1 hidden sm:block">📎</div>
+                  <input
+                    type="text"
+                    placeholder={`Message as ${currentUser.name}...`}
+                    value={inputMsg}
+                    onChange={(e) => setInputMsg(e.target.value)}
+                    className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm bg-white border border-slate-300 rounded-2xl focus:ring-2 focus:ring-[#25D366] focus:outline-none shadow-2xs"
+                  />
+                  <button
+                    type="submit"
+                    className="p-2 sm:p-2.5 px-3.5 sm:px-4 rounded-2xl bg-[#075E54] hover:bg-[#064e46] text-white font-extrabold text-xs shadow-md transition flex items-center gap-1 shrink-0"
+                  >
+                    <span>Send</span> <span>➤</span>
+                  </button>
+                </form>
+
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-xs text-slate-400 p-6 text-center">
+                Select an advocate from the left roster to start a real-time consultation.
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // SECTION 6: SETTINGS VIEW
+    // =========================================================================
+    function SettingsView({ user, onToggleStatus }) {
+      const [tab, setTab] = useState('profile');
+      const isLawyer = user.role === 'lawyer';
+      const isLawyerActive = isLawyer ? (user.is_available === true || user.is_available === 'true') : true;
+
+      return (
+        <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 animate-fadeIn">
+          <div className="mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-200">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Settings & Platform Governance</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">Configure profile credentials, active availability, and privacy protocols.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="space-y-1 flex md:flex-col overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+              {[
+                { id: 'profile', label: 'My Profile & Standing' },
+                { id: 'about', label: 'About Legal Advice' },
+                { id: 'privacy', label: 'Privilege & Section 126' },
+                { id: 'contact', label: 'Support & Hotline' }
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
+                    tab === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="md:col-span-3 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+              {tab === 'profile' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Account Credentials</h3>
+                    <p className="text-xs text-slate-500">Authenticated user details stored in central database</p>
+                  </div>
+
+                  {/* ADVOCATE AVAILABILITY STATUS BOX */}
+                  {isLawyer && (
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${isLawyerActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                          <span className="text-xs font-extrabold text-slate-900">
+                            Personal Agents Directory Visibility: {isLawyerActive ? 'ACTIVE (Visible)' : 'INACTIVE (Hidden)'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          {isLawyerActive 
+                            ? 'Aapka profile active hai. Sabhi clients aapko Personal Agents list me dekh sakte hain aur chat shuru kar sakte hain.' 
+                            : 'Aapka profile inactive hai. Naye clients aapko directory me nahi dekh sakte.'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={onToggleStatus}
+                        className={`px-4 py-2 rounded-xl text-xs font-extrabold shadow-xs transition ${
+                          isLawyerActive
+                            ? 'bg-amber-500 hover:bg-amber-600 text-slate-900'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {isLawyerActive ? 'Hide Profile (Go Inactive)' : 'Show Profile (Go Active)'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-400 font-bold mb-1">Full Name</label>
+                      <input 
+                        type="text" 
+                        disabled 
+                        value={user.name} 
+                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 font-bold mb-1">Email</label>
+                      <input 
+                        type="text" 
+                        disabled 
+                        value={user.email} 
+                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                      />
+                    </div>
+
+                    {user.role === 'lawyer' && (
+                      <>
+                        <div>
+                          <label className="block text-slate-400 font-bold mb-1">Bar Council Registration</label>
+                          <input 
+                            type="text" 
+                            disabled 
+                            value={user.licenseNo || 'Verified Advocate'} 
+                            className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-400 font-bold mb-1">Primary Court Chambers</label>
+                          <input 
+                            type="text" 
+                            disabled 
+                            value={user.court || 'High Court of Delhi'} 
+                            className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-400 font-bold mb-1">Hourly Consultation Rate</label>
+                          <input 
+                            type="text" 
+                            disabled 
+                            value={`₹${user.hourly_rate || 2500} / hr`} 
+                            className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-400 font-bold mb-1">Standing</label>
+                          <input 
+                            type="text" 
+                            disabled 
+                            value={`${user.experience_years || 8}+ Years Trial Practice`} 
+                            className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-bold" 
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {tab === 'about' && (
+                <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
+                  <h3 className="text-base font-bold text-slate-900">About Legal Advice Platform</h3>
+                  <p>
+                    Legal Advice is an enterprise legal portal connecting verified advocates with clients across High Courts and tribunals. 
+                    Every legal counsel profile is backed by verified Bar Council admissions, courtroom experience metrics, and secure communication channels.
+                  </p>
+                </div>
+              )}
+
+              {tab === 'privacy' && (
+                <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
+                  <h3 className="text-base font-bold text-slate-900">Attorney-Client Privilege</h3>
+                  <p>
+                    All communications, notes, and file exhibits deposited in this portal are protected under Section 126 of the Indian Evidence Act / Section 132 of Bharatiya Sakshya Adhiniyam.
+                  </p>
+                </div>
+              )}
+
+              {tab === 'contact' && (
+                <div className="space-y-4 text-xs text-slate-600">
+                  <h3 className="text-base font-bold text-slate-900">Privileged Hotline</h3>
+                  <p>Urgent court filing or bail emergency: <strong>+91 (011) 2338-LEGAL</strong></p>
+                  <p>Direct Registry Email: <strong>registrar@legaladvice.com</strong></p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // MODAL: CATEGORY DETAIL MODAL
+    // =========================================================================
+    function CategoryDetailModal({ category, onClose, onFileCase }) {
+      if (!category) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl p-2 bg-blue-50 border border-blue-100 rounded-2xl">{category.icon}</span>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900">{category.title}</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Statutory Practice Domain</span>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+
+            <div className="my-6 space-y-4 text-xs">
+              <div>
+                <h4 className="font-bold text-slate-800 mb-1">Domain Scope & Procedural Relief</h4>
+                <p className="text-slate-600 leading-relaxed">{category.fullDesc}</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">Key Court Proceedings</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {category.services.map((srv, idx) => (
+                    <div key={idx} className="p-2 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-700 flex items-center gap-1.5">
+                      <span className="text-blue-500">✓</span> {srv}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+              <button onClick={onClose} className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs">Close</button>
+              <button onClick={onFileCase} className="px-5 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md text-xs">File Legal Case in this Domain</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // MODAL: FILE CASE MODAL
+    // =========================================================================
+    function FileCaseModal({ categories, lawyers, onClose, onSubmit }) {
+      const [title, setTitle] = useState('');
+      const [categorySlug, setCategorySlug] = useState(categories[0]?.slug || 'criminal-law');
+      const [lawyerId, setLawyerId] = useState(lawyers[0]?.id || '');
+      const [desc, setDesc] = useState('');
+      const [priority, setPriority] = useState('Medium');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        const selectedLawyer = lawyers.find(l => l.id === lawyerId);
+        onSubmit({
+          title,
+          category_slug: categorySlug,
+          lawyer_id: lawyerId,
+          lawyer_name: selectedLawyer ? selectedLawyer.name : 'Unassigned',
+          description: desc,
+          priority
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900">File New Legal Matter</h3>
+                <p className="text-xs text-slate-500">Initiate privileged petition docket</p>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="my-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Docket / Petition Title</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. Anticipatory Bail Petition before Delhi High Court" 
+                  value={title} 
+                  onChange={e => setTitle(e.target.value)} 
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600" 
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Statutory Practice Domain</label>
+                <select 
+                  value={categorySlug} 
+                  onChange={e => setCategorySlug(e.target.value)} 
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 font-semibold"
+                >
+                  {categories.map(c => <option key={c.slug} value={c.slug}>{c.title}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Case Facts & Relief Sought</label>
+                <textarea 
+                  required 
+                  rows={3} 
+                  placeholder="State the primary dispute facts, involved police station or court, and relief desired..." 
+                  value={desc} 
+                  onChange={e => setDesc(e.target.value)} 
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600" 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Retain Advocate</label>
+                  <select 
+                    value={lawyerId} 
+                    onChange={e => setLawyerId(e.target.value)} 
+                    className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 font-semibold"
+                  >
+                    {lawyers.map(l => <option key={l.id} value={l.id}>{l.name} ({l.area_of_expertise})</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Urgency</label>
+                  <select 
+                    value={priority} 
+                    onChange={e => setPriority(e.target.value)} 
+                    className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 font-semibold"
+                  >
+                    <option value="Low">Low - Advisory</option>
+                    <option value="Medium">Medium - Pending</option>
+                    <option value="High">High - Impending Arrest / Hearing</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button type="button" onClick={onClose} className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="submit" className="px-5 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md">Submit Legal Filing</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

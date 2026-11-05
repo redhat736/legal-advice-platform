@@ -1,0 +1,397 @@
+{
+  "users": [
+    {
+      "id": "lawyer-rahul",
+      "name": "Adv. Rahul Rawat",
+      "email": "rahul.rawat@legaladvice.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:48:44.610Z"
+    },
+    {
+      "id": "lawyer-1",
+      "name": "Elena Rostova, Esq.",
+      "email": "elena.rostova@legaladvice.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:48:44.612Z"
+    },
+    {
+      "id": "lawyer-2",
+      "name": "Marcus Vance, Esq.",
+      "email": "marcus.vance@legaladvice.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:48:44.612Z"
+    },
+    {
+      "id": "lawyer-3",
+      "name": "Sarah Chen, Esq.",
+      "email": "sarah.chen@legaladvice.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:48:44.612Z"
+    },
+    {
+      "id": "lawyer-4",
+      "name": "David Reynolds, Esq.",
+      "email": "david.reynolds@legaladvice.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:48:44.612Z"
+    },
+    {
+      "id": "client-demo-1",
+      "name": "Alexander Wright",
+      "email": "client@example.com",
+      "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
+      "role": "client",
+      "created_at": "2026-11-04T06:48:44.612Z"
+    },
+    {
+      "id": "3cf544ca-eb61-4ee2-82b3-6f46ac704465",
+      "name": "Adv. Priya Sharma",
+      "email": "priya.sharma@legaladvice.com",
+      "password_hash": "$2a$12$nI.FdXquN.nzTqD64d3qHuJDJJx6cD5lssUMpPyK8cUmGW5M0GePy",
+      "role": "lawyer",
+      "created_at": "2026-11-04T06:57:18.552Z"
+    },
+    {
+      "id": "0b57283d-7225-4298-b919-4605d9cc8fd4",
+      "name": "Vikram Mehta",
+      "email": "vikram.mehta@gmail.com",
+      "password_hash": "$2a$12$ncOYkt74bj2p4YdmQwTSsOHZKQ2Mw1oTmJ1nVoyyqJ8awiPEFyt9u",
+      "role": "client",
+      "created_at": "2026-11-04T06:58:36.968Z"
+    },
+    {
+      "id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "name": "Rahul rawat",
+      "email": "rajrawat7108@gmail.com",
+      "password_hash": "$2a$12$yGQMbhqcFIC.qll91cQENO3L1zf0RIaxzoy1jx4yEOsUOKaEXVFvu",
+      "role": "lawyer",
+      "created_at": "2026-11-04T07:05:46.556Z"
+    },
+    {
+      "id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
+      "name": "Lopez",
+      "email": "rawatrahul8838@gmail.com",
+      "password_hash": "$2a$12$kVmUr.rqOtYDB8d/lXSR0uolVA41IEbDsrbRd9e.CSC9faYafUmOq",
+      "role": "client",
+      "created_at": "2026-11-04T07:06:29.661Z"
+    }
+  ],
+  "lawyer_profiles": [
+    {
+      "id": "prof-rahul",
+      "user_id": "lawyer-rahul",
+      "license_no": "D/1482/2018 (Bar Council of Delhi)",
+      "court": "High Court of Delhi & Supreme Court of India",
+      "area_of_expertise": "Criminal Law & Bail Specialist",
+      "experience_years": 9,
+      "achievements": "250+ Bail Approvals • Special Trial Counsel • Delhi Bar Member",
+      "bio": "Senior Criminal Defense Counsel specializing in bail petitions, quashing, commercial fraud defense, and high-stakes trials.",
+      "avatar_url": "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300",
+      "hourly_rate": 2500,
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.97
+    },
+    {
+      "id": "prof-1",
+      "user_id": "lawyer-1",
+      "license_no": "NY-489211 (State Bar of NY)",
+      "court": "Federal Appeals & District Court",
+      "area_of_expertise": "Criminal Law",
+      "experience_years": 14,
+      "achievements": "Former Senior Public Defender • 94% Case Dismissal/Acquittal Rate",
+      "bio": "Dedicated criminal defense advocate specializing in federal appeals, state felony trials, and complex constitutional defense.",
+      "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400",
+      "hourly_rate": 3000,
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.95
+    },
+    {
+      "id": "prof-2",
+      "user_id": "lawyer-2",
+      "license_no": "CA-992144 (State Bar of California)",
+      "court": "Commercial Division & NCLT",
+      "area_of_expertise": "Business Law",
+      "experience_years": 18,
+      "achievements": "Represented $2.4B+ in Cross-border M&A • Silicon Valley Top Corporate Counsel",
+      "bio": "Corporate strategist focused on venture capital financings, joint ventures, regulatory compliance, and commercial contracts.",
+      "avatar_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=400",
+      "hourly_rate": 4500,
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.98
+    },
+    {
+      "id": "prof-3",
+      "user_id": "lawyer-3",
+      "license_no": "D/8920/2015 (Family Court Roster)",
+      "court": "Principal Family Courts & Mediation Centers",
+      "area_of_expertise": "Family Law",
+      "experience_years": 11,
+      "achievements": "Certified Matrimonial Arbitrator • 450+ High-Asset Divorces Settled Amicably",
+      "bio": "Empathetic counsel for custody agreements, complex marital asset division, and family court mediation.",
+      "avatar_url": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400",
+      "hourly_rate": 2200,
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.92
+    },
+    {
+      "id": "prof-4",
+      "user_id": "lawyer-4",
+      "license_no": "MA-310892 (RERA & Property Bar)",
+      "court": "RERA Tribunal & Civil Court",
+      "area_of_expertise": "Real Estate Law",
+      "experience_years": 15,
+      "achievements": "Title Counsel for Major REITs • 1,200+ Conveyances Closed Safely",
+      "bio": "Guiding developers, brokers, and residential buyers through zoning disputes, land acquisitions, and closing escrows.",
+      "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400",
+      "hourly_rate": 2800,
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.88
+    },
+    {
+      "id": "443bde36-774a-4b6d-9d7f-f2b809b8b5f5",
+      "user_id": "3cf544ca-eb61-4ee2-82b3-6f46ac704465",
+      "area_of_expertise": "Employment Law",
+      "experience_years": 7,
+      "achievements": "Specialist in Workplace Rights & Corporate Compliance",
+      "bio": "Dedicated legal advocate committed to professional courtroom advocacy.",
+      "hourly_rate": 2200,
+      "license_no": "D/2901/2019",
+      "court": "Supreme Court & Delhi High Court",
+      "avatar_url": "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300",
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.9,
+      "updated_at": "2026-11-04T06:58:15.506Z"
+    },
+    {
+      "id": "965e59cb-a9ac-44fa-ba9a-e16255b0f43f",
+      "user_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "area_of_expertise": "Criminal Law & Bail Specialist",
+      "experience_years": 8,
+      "achievements": "Bar Council Admitted Advocate • High Trial Record",
+      "bio": "Dedicated legal advocate committed to professional courtroom advocacy.",
+      "hourly_rate": 2000,
+      "license_no": "BAR-2006",
+      "court": "High Court of Delhi & Supreme Court",
+      "avatar_url": "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300",
+      "currency": "₹",
+      "is_available": true,
+      "rating": 4.9,
+      "updated_at": "2026-11-04T07:06:12.974Z"
+    }
+  ],
+  "law_categories": [
+    {
+      "id": "cat-1",
+      "slug": "family-law",
+      "title": "Family Law",
+      "short_desc": "Compassionate counsel for divorce, child custody, alimony, and adoption proceedings.",
+      "full_desc": "Family law covers sensitive and life-altering legal matters involving familial relationships. Our dedicated attorneys specialize in navigating divorce settlements, custody battles, marital agreements, and child support hearings with confidentiality and empathy.",
+      "key_services": "Divorce Mediation, Child Custody & Visitation, Alimony Support, Prenuptial Agreements, Guardianship & Adoption",
+      "icon_name": "Users"
+    },
+    {
+      "id": "cat-2",
+      "slug": "criminal-law",
+      "title": "Criminal Law",
+      "short_desc": "Relentless defense for misdemeanors, felonies, DUI/DWIs, and white-collar defense.",
+      "full_desc": "Facing criminal accusations requires immediate, strategic defense counsel. We protect your constitutional rights, challenge prosecutorial overreach, investigate state evidence, and represent you at trial or settlement negotiation.",
+      "key_services": "Felony & Misdemeanor Defense, White-Collar Crimes, DUI/Traffic Offenses, Bail & Bond Hearings, Record Expungement",
+      "icon_name": "ShieldAlert"
+    },
+    {
+      "id": "cat-3",
+      "slug": "real-estate-law",
+      "title": "Real Estate Law",
+      "short_desc": "Guidance for commercial & residential transactions, lease disputes, and zoning issues.",
+      "full_desc": "Whether purchasing real property, structuring a commercial lease, or dealing with title encumbrances, our property attorneys protect high-value assets and ensure regulatory compliance in transactions.",
+      "key_services": "Property Purchase Closings, Commercial Leases, Title Deeds & Liens, Boundary Disputes, Zoning & Land Use",
+      "icon_name": "Building"
+    },
+    {
+      "id": "cat-4",
+      "slug": "employment-law",
+      "title": "Employment Law",
+      "short_desc": "Advocacy for wrongful termination, workplace harassment, wage disputes, and severance.",
+      "full_desc": "Both employees and employers navigate an intricate web of federal and state labor statutes. We provide representation in wrongful termination, FLSA wage theft, discrimination, and non-compete agreements.",
+      "key_services": "Wrongful Termination, Sexual Harassment & Discrimination, Wage & Hour Claims, Severance Review, Non-Compete Clauses",
+      "icon_name": "Briefcase"
+    },
+    {
+      "id": "cat-5",
+      "slug": "business-law",
+      "title": "Business Law",
+      "short_desc": "Corporate formation, governance, contract drafting, mergers, and intellectual property.",
+      "full_desc": "From early-stage entity structuring to complex enterprise litigation and mergers & acquisitions, we serve as outside general counsel for businesses of all scales.",
+      "key_services": "LLC/Corp Formation, Contract Negotiation, IP & Trademark Licensing, M&A Advisory, Commercial Litigation",
+      "icon_name": "FileText"
+    },
+    {
+      "id": "cat-6",
+      "slug": "personal-injury-law",
+      "title": "Personal Injury Law",
+      "short_desc": "Maximizing compensation for vehicular accidents, medical malpractice, and slip & falls.",
+      "full_desc": "When negligence injures you or your family, you deserve aggressive advocacy against insurance firms. We secure damages for medical bills, pain and suffering, and lost income.",
+      "key_services": "Auto & Truck Collisions, Medical Malpractice, Slip and Fall Claims, Product Liability, Wrongful Death",
+      "icon_name": "HeartPulse"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case-demo-1",
+      "client_id": "client-demo-1",
+      "lawyer_id": "lawyer-rahul",
+      "category_slug": "criminal-law",
+      "title": "Urgent Anticipatory Bail Petition - Delhi High Court",
+      "description": "Anticipatory bail petition filed under Section 438 CrPC regarding alleged corporate fraud allegations.",
+      "status": "In Review",
+      "priority": "High",
+      "created_at": "2026-11-03T06:48:44.612Z",
+      "updated_at": "2026-11-04T06:48:44.612Z"
+    }
+  ],
+  "documents": [],
+  "chat_sessions": [
+    {
+      "id": "chat-demo-rahul",
+      "client_id": "client-demo-1",
+      "lawyer_id": "lawyer-rahul",
+      "case_id": "case-demo-1",
+      "status": "Active",
+      "created_at": "2026-11-03T06:48:44.612Z"
+    },
+    {
+      "id": "d364e7e8-0c51-4e55-b999-368b35a8b4b1",
+      "client_id": "client-demo-1",
+      "lawyer_id": "3cf544ca-eb61-4ee2-82b3-6f46ac704465",
+      "case_id": null,
+      "status": "Active",
+      "created_at": "2026-11-05T07:12:10.677Z"
+    },
+    {
+      "id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "client_id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
+      "lawyer_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "case_id": null,
+      "status": "Active",
+      "created_at": "2026-11-05T09:47:24.616Z"
+    }
+  ],
+  "chat_messages": [
+    {
+      "id": "msg-1",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Namaste Rahul Sir, I have uploaded the FIR copy and need urgent legal advice on anticipatory bail.",
+      "created_at": "2026-11-04T00:48:44.612Z"
+    },
+    {
+      "id": "msg-2",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "lawyer-rahul",
+      "message_text": "Namaste Alexander. I have reviewed the case particulars. Rest assured, we will prepare the petition today and move the High Court tomorrow morning.",
+      "created_at": "2026-11-04T03:48:44.612Z"
+    },
+    {
+      "id": "5c47cc2d-a6ce-4463-b0de-bf4e19cccfa1",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Hello Rahul Sir, this is Alexander testing live chat message delivery.",
+      "created_at": "2026-11-04T07:11:19.418Z"
+    },
+    {
+      "id": "068e0c9c-ca9b-47c5-a04a-cfb09bcef961",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "lawyer-rahul",
+      "message_text": "Thank you for providing the details, Alexander. I am reviewing this against the applicable state statutes right now.",
+      "created_at": "2026-11-04T07:11:20.648Z"
+    },
+    {
+      "id": "78873785-0845-4c2c-a8e1-b8220890e13c",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Sir, police station se notice aaya hai. Mujhe kya karna chahiye?",
+      "created_at": "2026-11-04T07:14:26.375Z"
+    },
+    {
+      "id": "4b23414c-f65d-47b2-9a88-712268060f3e",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "lawyer-rahul",
+      "message_text": "Aap bilkul chinta mat kijiye. Notice ki photo My Documents me upload karein, hum kal morning court me reply file karenge.",
+      "created_at": "2026-11-04T07:14:26.845Z"
+    },
+    {
+      "id": "0a572bd5-7f7d-4432-85d3-219992f258f6",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Sir, emergency bail draft ready kar dijiye. Time: 10:08:43 am",
+      "created_at": "2026-11-05T04:38:43.961Z"
+    },
+    {
+      "id": "e815fd2c-6787-4fc2-8f03-1b90afa5d469",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "lawyer-rahul",
+      "message_text": "Ji bilkul Alexander, draft tayyar hai. High Court opening session me hum petition place karenge.",
+      "created_at": "2026-11-05T04:38:43.996Z"
+    },
+    {
+      "id": "a352dff1-6555-4dbb-9f6f-4cf234e3677d",
+      "session_id": "d364e7e8-0c51-4e55-b999-368b35a8b4b1",
+      "sender_id": "client-demo-1",
+      "message_text": "Namaste Priya Maam, please review my employment agreement.",
+      "created_at": "2026-11-05T07:12:10.699Z"
+    },
+    {
+      "id": "6c07659e-1ce3-43f8-b88a-801f041e5f56",
+      "session_id": "d364e7e8-0c51-4e55-b999-368b35a8b4b1",
+      "sender_id": "3cf544ca-eb61-4ee2-82b3-6f46ac704465",
+      "message_text": "Sure Alexander, I specialize in employment contracts. Please upload it to Vault.",
+      "created_at": "2026-11-05T07:12:11.280Z"
+    },
+    {
+      "id": "7fc29cde-94a3-4ff2-b23d-86af9c55571b",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
+      "message_text": "hlo",
+      "created_at": "2026-11-05T09:47:36.240Z"
+    },
+    {
+      "id": "f5a69979-5c24-4a37-81fb-48571ced57b0",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "message_text": "yes tell please what your problem",
+      "created_at": "2026-11-05T09:48:37.628Z"
+    },
+    {
+      "id": "07b80bf0-63e4-47f0-9f53-f541beda47d5",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
+      "message_text": "hy sir how are you",
+      "created_at": "2026-11-05T09:48:58.761Z"
+    },
+    {
+      "id": "37428e6c-75ee-4ca7-84b7-82938dba71d4",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "message_text": "yes i am fine",
+      "created_at": "2026-11-05T09:49:07.772Z"
+    },
+    {
+      "id": "4bcc0169-cf74-4030-87e7-304d555bed3f",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
+      "message_text": "we just  enjoy",
+      "created_at": "2026-11-05T09:55:34.682Z"
+    }
+  ]
+}
