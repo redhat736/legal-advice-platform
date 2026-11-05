@@ -488,17 +488,17 @@ export const query = async (text, params = []) => {
       return { rows: result, rowCount: result.length };
     }
 
-    // CHAT SESSIONS
+    // CHAT SESSIONS (Strict Privacy & Direct Session Isolation)
     if (/FROM chat_sessions/i.test(normalized)) {
       let result = [...embeddedStore.chat_sessions];
-      if (/WHERE id = \$1/i.test(normalized)) {
+      if (/\b(?:s\.)?id = \$1/i.test(normalized)) {
         result = result.filter(s => s.id === params[0]);
       } else if (/client_id/i.test(normalized) && /lawyer_id/i.test(normalized) && params.length >= 2) {
         result = result.filter(s => 
           (s.client_id === params[0] && s.lawyer_id === params[1]) ||
           (s.client_id === params[1] && s.lawyer_id === params[0])
         );
-      } else if (/client_id = \$1 OR lawyer_id = \$1/i.test(normalized) || /client_id = \$1/i.test(normalized) || /lawyer_id = \$1/i.test(normalized)) {
+      } else if (/\b(?:s\.)?client_id = \$1/i.test(normalized) || /\b(?:s\.)?lawyer_id = \$1/i.test(normalized)) {
         result = result.filter(s => s.client_id === params[0] || s.lawyer_id === params[0]);
       }
       const enriched = result.map(s => {
@@ -516,12 +516,12 @@ export const query = async (text, params = []) => {
       return { rows: enriched, rowCount: enriched.length };
     }
 
-    // CHAT MESSAGES
+    // CHAT MESSAGES (Strict 1-to-1 End-to-End Session Isolation)
     if (/FROM chat_messages/i.test(normalized)) {
       let result = [...embeddedStore.chat_messages];
-      if (/WHERE id = \$1/i.test(normalized)) {
+      if (/\b(?:m\.)?id = \$1/i.test(normalized)) {
         result = result.filter(m => m.id === params[0]);
-      } else if (/WHERE session_id = \$1/i.test(normalized)) {
+      } else if (/session_id = \$1/i.test(normalized)) {
         result = result.filter(m => m.session_id === params[0]);
       }
       const enriched = result.map(m => {
