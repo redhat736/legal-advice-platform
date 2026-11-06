@@ -278,18 +278,40 @@ export const updateProfile = async (req, res, next) => {
       if (bio !== undefined) user.bio = bio;
     }
 
-    // Update lawyer profile if lawyer
-    const prof = embeddedStore.lawyer_profiles.find(p => p.user_id === userId);
-    if (prof) {
-      if (avatar_url !== undefined) prof.avatar_url = avatar_url;
-      if (bio !== undefined) prof.bio = bio;
-      if (area_of_expertise !== undefined) prof.area_of_expertise = area_of_expertise;
-      if (experience_years !== undefined) prof.experience_years = experience_years;
-      if (hourly_rate !== undefined) prof.hourly_rate = hourly_rate;
-      if (court !== undefined) prof.court = court;
-      if (licenseNo !== undefined) prof.license_no = licenseNo;
-      if (achievements !== undefined) prof.achievements = achievements;
-      prof.updated_at = new Date().toISOString();
+    // Update or create lawyer profile if lawyer
+    let prof = embeddedStore.lawyer_profiles.find(p => p.user_id === userId);
+    if (user && user.role === 'lawyer') {
+      if (prof) {
+        if (avatar_url !== undefined) prof.avatar_url = avatar_url;
+        if (bio !== undefined) prof.bio = bio;
+        if (area_of_expertise !== undefined) prof.area_of_expertise = area_of_expertise;
+        if (experience_years !== undefined) prof.experience_years = Number(experience_years);
+        if (hourly_rate !== undefined) prof.hourly_rate = Number(hourly_rate);
+        if (court !== undefined) prof.court = court;
+        if (licenseNo !== undefined) prof.license_no = licenseNo;
+        if (achievements !== undefined) prof.achievements = achievements;
+        prof.updated_at = new Date().toISOString();
+      } else {
+        const { v4: uuidv4 } = await import('uuid');
+        prof = {
+          id: uuidv4(),
+          user_id: userId,
+          area_of_expertise: area_of_expertise || 'General Legal Counsel',
+          experience_years: Number(experience_years) || 5,
+          achievements: achievements || '',
+          bio: bio || '',
+          hourly_rate: Number(hourly_rate) || 2000,
+          license_no: licenseNo || 'Verified Bar Advocate',
+          court: court || 'High Court of Delhi',
+          avatar_url: avatar_url || user.avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300',
+          is_available: true,
+          rating: 4.90,
+          currency: '₹',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        embeddedStore.lawyer_profiles.push(prof);
+      }
     }
     
     persistStore();

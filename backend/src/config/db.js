@@ -508,9 +508,16 @@ export const query = async (text, params = []) => {
         return {
           ...s,
           client_name: client ? client.name : 'Client',
+          client_avatar: client ? (client.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200') : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          client_bio: client ? (client.bio || 'Petitioner Client') : 'Petitioner Client',
+          client_email: client ? client.email : '',
           lawyer_name: lawyer ? lawyer.name : 'Advocate',
-          lawyer_avatar: lawyerProf ? lawyerProf.avatar_url : 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300',
-          area_of_expertise: lawyerProf ? lawyerProf.area_of_expertise : 'Legal Counsel'
+          lawyer_avatar: (lawyerProf && lawyerProf.avatar_url) ? lawyerProf.avatar_url : (lawyer && lawyer.avatar_url ? lawyer.avatar_url : 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300'),
+          lawyer_bio: lawyerProf ? (lawyerProf.bio || 'Admitted advocate with trial standing') : 'Admitted advocate with trial standing',
+          lawyer_court: lawyerProf ? (lawyerProf.court || 'High Court of Delhi') : 'High Court of Delhi',
+          lawyer_license: lawyerProf ? (lawyerProf.license_no || 'Verified Bar License') : 'Verified Bar License',
+          lawyer_experience: lawyerProf ? (lawyerProf.experience_years || 5) : 5,
+          area_of_expertise: lawyerProf ? (lawyerProf.area_of_expertise || 'Legal Counsel') : 'Legal Counsel'
         };
       });
       return { rows: enriched, rowCount: enriched.length };
@@ -526,10 +533,12 @@ export const query = async (text, params = []) => {
       }
       const enriched = result.map(m => {
         const sender = embeddedStore.users.find(u => u.id === m.sender_id);
+        const lawyerProf = sender && sender.role === 'lawyer' ? embeddedStore.lawyer_profiles.find(p => p.user_id === sender.id) : null;
         return {
           ...m,
           sender_name: sender ? sender.name : 'User',
-          sender_role: sender ? sender.role : 'client'
+          sender_role: sender ? sender.role : 'client',
+          sender_avatar: (lawyerProf && lawyerProf.avatar_url) ? lawyerProf.avatar_url : (sender ? sender.avatar_url : null)
         };
       });
       enriched.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));

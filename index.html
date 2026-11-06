@@ -332,20 +332,39 @@
           const res = await apiCall('/chat/sessions');
           if (res && res.success && Array.isArray(res.sessions)) {
             const formatted = res.sessions.map(s => {
-              const partnerName = currentUser.role === 'client' ? s.lawyer_name : s.client_name;
-              const partnerAvatar = currentUser.role === 'client' 
+              const isClient = currentUser.role === 'client';
+              const partnerName = isClient ? s.lawyer_name : s.client_name;
+              const partnerAvatar = isClient 
                 ? (s.lawyer_avatar || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300')
-                : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+                : (s.client_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200');
+              const partnerBio = isClient 
+                ? (s.lawyer_bio || 'Admitted advocate with trial standing') 
+                : (s.client_bio || 'Petitioner Client');
+              const partnerRole = isClient ? 'lawyer' : 'client';
+              const partnerCourt = s.lawyer_court || 'High Court of Delhi';
+              const partnerLicense = s.lawyer_license || '';
+              const partnerExperience = s.lawyer_experience || 5;
+              const partnerArea = s.area_of_expertise || 'General Legal Counsel';
 
               return {
                 id: s.id,
                 client_id: s.client_id,
                 client_name: s.client_name,
+                client_avatar: s.client_avatar,
+                client_bio: s.client_bio,
                 lawyer_id: s.lawyer_id,
                 lawyer_name: s.lawyer_name,
+                lawyer_avatar: s.lawyer_avatar,
+                lawyer_bio: s.lawyer_bio,
                 partnerName,
                 partnerAvatar,
-                lawyer_court: s.lawyer_court || 'High Court of Delhi',
+                partnerBio,
+                partnerRole,
+                partnerCourt,
+                partnerLicense,
+                partnerExperience,
+                partnerArea,
+                lawyer_court: partnerCourt,
                 lastMessage: s.last_message || 'No messages yet.',
                 lastTime: s.last_message_time ? new Date(s.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
                 status: s.status || 'Active'
@@ -488,12 +507,23 @@
       // =======================================================================
       const handleUpdateProfile = async (updates) => {
         try {
-          await apiCall('/auth/profile', {
+          const res = await apiCall('/auth/profile', {
             method: 'PATCH',
             body: JSON.stringify(updates)
           });
-          setCurrentUser(prev => ({ ...prev, ...updates }));
-          setNotificationToast({ title: '✅ Profile Updated!', body: 'Aapki profile successfully update ho gayi.' });
+          setCurrentUser(prev => {
+            const next = { ...prev, ...updates };
+            if (updates.avatar_url && next.role === 'lawyer' && next.profile) {
+              next.profile.avatar_url = updates.avatar_url;
+            }
+            try {
+              localStorage.setItem('LA_CURRENT_USER', JSON.stringify(next));
+            } catch (e) {}
+            return next;
+          });
+          await loadLawyers();
+          await loadSessions();
+          setNotificationToast({ title: '✅ Profile Updated!', body: 'Aapki profile aur Personal Agent dossier update ho gayi.' });
         } catch(e) {
           console.error('Profile update failed:', e);
         }
@@ -2346,6 +2376,7 @@ You can ask any legal question for free, or configure your **Google Gemini API K
       const [mobileShowChat, setMobileShowChat] = useState(false);
       const [filePreview, setFilePreview] = useState(null);
       const [lightboxImg, setLightboxImg] = useState(null);
+      const [contactInfoModalOpen, setContactInfoModalOpen] = useState(false);
       const messagesEndRef = useRef(null);
       const messagesContainerRef = useRef(null);
       const fileInputRef = useRef(null);
@@ -2453,12 +2484,12 @@ You can ask any legal question for free, or configure your **Google Gemini API K
       const otherUserRole = isMeClient ? 'lawyer' : 'client';
 
       return (
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6 animate-fadeIn">
+        <div className="max-w-7xl mx-auto p-0 sm:px-4 lg:px-8 py-0 sm:py-6 animate-fadeIn min-h-0">
           
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row h-[78vh]">
+          <div className="bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-none sm:shadow-xl overflow-hidden flex flex-col md:flex-row h-[calc(100dvh-125px)] sm:h-[80vh] md:h-[82vh] min-h-0 w-full">
             
             {/* Left WhatsApp Sidebar */}
-            <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-slate-50 ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-slate-50 min-h-0 h-full ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
               
               {/* WhatsApp Profile Top Bar (Click to Edit Profile) */}
               <div 
@@ -2507,7 +2538,7 @@ You can ask any legal question for free, or configure your **Google Gemini API K
               </div>
 
               {/* Chat List */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
                 {visibleChats.length === 0 ? (
                   <div className="text-center py-8 text-xs text-slate-400">
                     No conversations yet. Choose an advocate below to start chatting!
@@ -2572,47 +2603,65 @@ You can ask any legal question for free, or configure your **Google Gemini API K
 
             {/* Right WhatsApp Chat Area */}
             {activeChat ? (
-              <div className={`flex-1 flex flex-col bg-[#EFEAE2] ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+              <div className={`flex-1 min-h-0 flex flex-col bg-[#EFEAE2] h-full ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
                 
-                {/* WhatsApp Chat Top Header */}
-                <div className="p-3 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shadow-2xs">
-                  <div className="flex items-center gap-2 sm:gap-3">
+                {/* WhatsApp Chat Top Header (Click to Open Contact Info) */}
+                <div 
+                  onClick={() => setContactInfoModalOpen(true)}
+                  className="p-3 px-3.5 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shadow-2xs cursor-pointer hover:bg-slate-50 transition select-none shrink-0"
+                  title="Click to view Contact Profile"
+                >
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                     {/* Mobile Back Button to Conversations */}
                     <button
-                      onClick={() => setMobileShowChat(false)}
-                      className="md:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 font-extrabold text-sm"
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setMobileShowChat(false); }}
+                      className="md:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 font-extrabold text-base shrink-0"
                     >
                       ←
                     </button>
 
-                    <img 
-                      src={activeChat.partnerAvatar} 
-                      alt="avatar" 
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-slate-200"
-                    />
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
-                        {activeChat.partnerName}
+                    <div className="relative shrink-0">
+                      <img 
+                        src={activeChat.partnerAvatar} 
+                        alt={activeChat.partnerName} 
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-xs"
+                      />
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate flex items-center gap-1.5">
+                        <span>{activeChat.partnerName}</span>
+                        <span className="text-[11px] text-blue-500 hover:text-blue-700">ℹ️</span>
                       </h3>
-                      <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-600 font-semibold">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {isMeClient ? `${activeChat.lawyer_court || 'High Court of Delhi'}` : 'Petitioner Client'}
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-600 font-semibold truncate mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                        <span className="truncate">
+                          {activeChat.partnerRole === 'lawyer' 
+                            ? (activeChat.partnerCourt || 'High Court of Delhi') 
+                            : (activeChat.partnerBio || 'Verified Client')}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">
-                      🔒 Privileged Chat
-                    </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setContactInfoModalOpen(true); }}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1"
+                    >
+                      <span>Profile</span> <span>👤</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* WhatsApp Message Bubbles Area */}
+                {/* WhatsApp Message Bubbles Area (Mobile Touch Scroll Optimized) */}
                 <div 
                   ref={messagesContainerRef}
                   onScroll={handleChatScroll}
-                  className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2.5 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:18px_18px]"
+                  className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-2.5 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:18px_18px] overscroll-contain"
+                  style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
                 >
                   <div className="text-center my-1">
                     <span className="px-3 py-1 rounded-full bg-white/90 border border-slate-200 text-[10px] font-bold text-slate-500 shadow-2xs">
@@ -2683,6 +2732,123 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                   <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
                     <img src={lightboxImg} alt="Preview" className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl border border-white/20" />
                     <button onClick={() => setLightboxImg(null)} className="absolute top-4 right-5 text-white text-3xl font-bold hover:text-red-400 transition">✕</button>
+                  </div>
+                )}
+
+                {/* WhatsApp Contact Info Modal (View Other Person's Profile) */}
+                {contactInfoModalOpen && activeChat && (
+                  <div 
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn"
+                    onClick={() => setContactInfoModalOpen(false)}
+                  >
+                    <div 
+                      className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[90vh]" 
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* WhatsApp Green Top Header */}
+                      <div className="bg-[#075E54] text-white px-5 py-4 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                          <button 
+                            type="button" 
+                            onClick={() => setContactInfoModalOpen(false)} 
+                            className="text-white hover:text-emerald-200 text-lg font-bold p-1 rounded-full hover:bg-white/10 transition"
+                          >
+                            ←
+                          </button>
+                          <h2 className="text-base font-bold">Contact Info</h2>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setContactInfoModalOpen(false)} 
+                          className="text-white/80 hover:text-white text-xl font-bold p-1 rounded-full hover:bg-white/10 transition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="overflow-y-auto p-5 space-y-4 flex-1 bg-white">
+                        {/* Large Center Avatar */}
+                        <div className="flex flex-col items-center justify-center pt-2">
+                          <div 
+                            className="relative cursor-pointer group"
+                            onClick={() => setLightboxImg(activeChat.partnerAvatar)}
+                            title="Tap to view full photo"
+                          >
+                            <img 
+                              src={activeChat.partnerAvatar} 
+                              alt={activeChat.partnerName} 
+                              className="w-28 h-28 rounded-full object-cover border-4 border-slate-100 shadow-lg group-hover:opacity-90 transition" 
+                            />
+                            <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
+                              🔍 Zoom
+                            </div>
+                          </div>
+                          <h3 className="text-base font-extrabold text-slate-900 mt-3 text-center">{activeChat.partnerName}</h3>
+                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800">
+                            {activeChat.partnerRole === 'lawyer' ? '⚖️ Bar Admitted Advocate' : '👤 Verified Client'}
+                          </span>
+                        </div>
+
+                        {/* About / Bio Section */}
+                        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] font-bold uppercase text-[#075E54] tracking-wider block mb-1">
+                            ℹ️ About / Status
+                          </span>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                            {activeChat.partnerBio || (activeChat.partnerRole === 'lawyer' ? 'Admitted advocate with trial standing.' : 'Client registered on Legal Advice Platform.')}
+                          </p>
+                        </div>
+
+                        {/* Lawyer Specific Details */}
+                        {activeChat.partnerRole === 'lawyer' && (
+                          <div className="space-y-2.5 p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 text-xs">
+                            <div>
+                              <span className="text-[10px] font-bold uppercase text-blue-800 tracking-wider block">🏛️ Practice Court</span>
+                              <span className="font-semibold text-slate-800">{activeChat.partnerCourt || 'High Court of Delhi'}</span>
+                            </div>
+                            {activeChat.partnerLicense && (
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-blue-800 tracking-wider block">📜 Bar Council License No.</span>
+                                <span className="font-semibold text-slate-800 font-mono">{activeChat.partnerLicense}</span>
+                              </div>
+                            )}
+                            {activeChat.partnerArea && (
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-blue-800 tracking-wider block">⚖️ Domain Specialty</span>
+                                <span className="font-semibold text-slate-800">{activeChat.partnerArea}</span>
+                              </div>
+                            )}
+                            {activeChat.partnerExperience && (
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-blue-800 tracking-wider block">⏳ Professional Standing</span>
+                                <span className="font-semibold text-slate-800">{activeChat.partnerExperience}+ Years Active Practice</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Security Section */}
+                        <div className="p-3 bg-emerald-50/70 rounded-2xl border border-emerald-100 flex items-center gap-2.5 text-xs text-emerald-900">
+                          <span className="text-lg">🔒</span>
+                          <div>
+                            <strong className="block text-[11px] font-bold">End-to-End Encrypted</strong>
+                            <span className="text-[10px] text-emerald-700">Messages and calls are privileged and secured under Bar Council rules.</span>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setContactInfoModalOpen(false)}
+                            className="w-full py-2.5 rounded-xl bg-[#075E54] hover:bg-[#064e46] text-white font-bold text-xs shadow-md transition"
+                          >
+                            Return to Chat
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

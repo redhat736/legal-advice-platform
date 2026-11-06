@@ -8,11 +8,16 @@ export const getUserSessions = async (req, res, next) => {
     const result = await db.query(
       `SELECT s.*, 
         c.name as client_name, 
+        c.avatar_url as client_avatar,
+        c.bio as client_bio,
         l.name as lawyer_name,
         p.area_of_expertise,
         p.avatar_url as lawyer_avatar,
+        p.bio as lawyer_bio,
         p.is_available as lawyer_is_available,
-        p.court as lawyer_court
+        p.court as lawyer_court,
+        p.license_no as lawyer_license,
+        p.experience_years as lawyer_experience
        FROM chat_sessions s
        JOIN users c ON s.client_id = c.id
        JOIN users l ON s.lawyer_id = l.id

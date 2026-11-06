@@ -2,11 +2,13 @@
   "users": [
     {
       "id": "lawyer-rahul",
-      "name": "Adv. Rahul Rawat",
+      "name": "Adv. Senior Rahul Rawat",
       "email": "rahul.rawat@legaladvice.com",
       "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
       "role": "lawyer",
-      "created_at": "2026-11-04T06:48:44.610Z"
+      "created_at": "2026-11-04T06:48:44.610Z",
+      "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
+      "bio": "Senior trial advocate with 12+ years appearing in High Court & Supreme Court."
     },
     {
       "id": "lawyer-1",
@@ -42,11 +44,13 @@
     },
     {
       "id": "client-demo-1",
-      "name": "Alexander Wright",
+      "name": "Alexander Senior Client",
       "email": "client@example.com",
       "password_hash": "$2a$12$WblIYFcuhG9f3W88wJi.NuNxeSR70rql6HhXl9XtYleJJ6R0IXrhK",
       "role": "client",
-      "created_at": "2026-11-04T06:48:44.612Z"
+      "created_at": "2026-11-04T06:48:44.612Z",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+      "bio": "Petitioner seeking constitutional and corporate litigation advisory."
     },
     {
       "id": "3cf544ca-eb61-4ee2-82b3-6f46ac704465",
@@ -93,17 +97,18 @@
     {
       "id": "prof-rahul",
       "user_id": "lawyer-rahul",
-      "license_no": "D/1482/2018 (Bar Council of Delhi)",
-      "court": "High Court of Delhi & Supreme Court of India",
-      "area_of_expertise": "Criminal Law & Bail Specialist",
+      "license_no": "BAR/DL/2024/9999",
+      "court": "Supreme Court of India & Delhi High Court",
+      "area_of_expertise": "Criminal Defense & Constitutional Law",
       "experience_years": 9,
       "achievements": "250+ Bail Approvals • Special Trial Counsel • Delhi Bar Member",
-      "bio": "Senior Criminal Defense Counsel specializing in bail petitions, quashing, commercial fraud defense, and high-stakes trials.",
-      "avatar_url": "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300",
+      "bio": "Senior trial advocate with 12+ years appearing in High Court & Supreme Court.",
+      "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
       "hourly_rate": 2500,
       "currency": "₹",
       "is_available": true,
-      "rating": 4.97
+      "rating": 4.97,
+      "updated_at": "2026-11-06T06:55:58.844Z"
     },
     {
       "id": "prof-1",
@@ -407,6 +412,13 @@
       "sender_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
       "message_text": "hlo",
       "created_at": "2026-11-05T12:19:40.911Z"
+    },
+    {
+      "id": "0ee40361-8b6e-4a48-94d2-240929c9de34",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Hello Adv. Rahul, I need assistance regarding high court matter.",
+      "created_at": "2026-11-06T06:55:58.909Z"
     }
   ]
 }
