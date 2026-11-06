@@ -400,6 +400,13 @@
       "sender_id": "3fb6818d-b361-4bcc-bf70-0f21e2e1c95c",
       "message_text": "we just  enjoy",
       "created_at": "2026-11-05T09:55:34.682Z"
+    },
+    {
+      "id": "9767eee0-4f3e-4073-9073-3ce8e3bb69ee",
+      "session_id": "bd3ebe45-83bb-4a68-87da-8ee2fb09767b",
+      "sender_id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
+      "message_text": "hlo",
+      "created_at": "2026-11-05T12:19:40.911Z"
     }
   ]
 }

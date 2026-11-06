@@ -92,10 +92,16 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // Backend API Base URL - Universal Cloud & Local Resolution
-    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
-      ? '/api'
-      : 'http://localhost:5000/api';
+    // Backend API Base URL - Universal Cloud, Netlify & Local Resolution
+    const API_BASE = (() => {
+      if (typeof window === 'undefined') return '/api';
+      if (window.location.protocol === 'file:') return 'http://localhost:5000/api';
+      // When deployed on Netlify (static hosting), automatically route API calls to live Render backend
+      if (window.location.hostname.includes('netlify.app')) {
+        return 'https://legal-advice-platform-cfdo.onrender.com/api';
+      }
+      return '/api';
+    })();
 
     // Helper for authenticated backend API requests
     const apiCall = async (endpoint, options = {}) => {
