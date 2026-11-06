@@ -505,14 +505,27 @@ export const query = async (text, params = []) => {
         const client = embeddedStore.users.find(u => u.id === s.client_id);
         const lawyer = embeddedStore.users.find(u => u.id === s.lawyer_id);
         const lawyerProf = embeddedStore.lawyer_profiles.find(p => p.user_id === s.lawyer_id);
+        
+        // Distinct client avatar: use client's set avatar_url, or personalized initials avatar
+        const clientAvatar = (client && client.avatar_url) 
+          ? client.avatar_url 
+          : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(client ? client.name : 'Client')}&backgroundColor=075e54,1c2541,2563eb,d97706,475569`;
+
+        // Lawyer avatar: use lawyer_profiles avatar_url or user avatar_url
+        const lawyerAvatar = (lawyerProf && lawyerProf.avatar_url) 
+          ? lawyerProf.avatar_url 
+          : ((lawyer && lawyer.avatar_url) 
+              ? lawyer.avatar_url 
+              : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(lawyer ? lawyer.name : 'Advocate')}&backgroundColor=1e293b,0f172a`);
+
         return {
           ...s,
           client_name: client ? client.name : 'Client',
-          client_avatar: client ? (client.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200') : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          client_avatar: clientAvatar,
           client_bio: client ? (client.bio || 'Petitioner Client') : 'Petitioner Client',
           client_email: client ? client.email : '',
           lawyer_name: lawyer ? lawyer.name : 'Advocate',
-          lawyer_avatar: (lawyerProf && lawyerProf.avatar_url) ? lawyerProf.avatar_url : (lawyer && lawyer.avatar_url ? lawyer.avatar_url : 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300'),
+          lawyer_avatar: lawyerAvatar,
           lawyer_bio: lawyerProf ? (lawyerProf.bio || 'Admitted advocate with trial standing') : 'Admitted advocate with trial standing',
           lawyer_court: lawyerProf ? (lawyerProf.court || 'High Court of Delhi') : 'High Court of Delhi',
           lawyer_license: lawyerProf ? (lawyerProf.license_no || 'Verified Bar License') : 'Verified Bar License',
@@ -549,8 +562,17 @@ export const query = async (text, params = []) => {
   // 2. INSERT queries (Permanently Persisted to Disk!)
   if (/^INSERT INTO/i.test(normalized)) {
     if (/INSERT INTO users/i.test(normalized)) {
-      const [id, name, email, password_hash, role] = params;
-      const newUser = { id, name, email, password_hash, role, created_at: new Date().toISOString() };
+      const [id, name, email, password_hash, role, avatar_url, bio] = params;
+      const newUser = { 
+        id, 
+        name, 
+        email, 
+        password_hash, 
+        role, 
+        avatar_url: avatar_url || null,
+        bio: bio || null,
+        created_at: new Date().toISOString() 
+      };
       embeddedStore.users.push(newUser);
       persistStore();
       return { rows: [newUser], rowCount: 1 };

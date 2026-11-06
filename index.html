@@ -335,8 +335,8 @@
               const isClient = currentUser.role === 'client';
               const partnerName = isClient ? s.lawyer_name : s.client_name;
               const partnerAvatar = isClient 
-                ? (s.lawyer_avatar || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300')
-                : (s.client_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200');
+                ? (s.lawyer_avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(s.lawyer_name || 'Advocate')}&backgroundColor=1e293b`)
+                : (s.client_avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(s.client_name || 'Client')}&backgroundColor=075e54,1c2541,2563eb,d97706,475569`);
               const partnerBio = isClient 
                 ? (s.lawyer_bio || 'Admitted advocate with trial standing') 
                 : (s.client_bio || 'Petitioner Client');
@@ -2674,22 +2674,34 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                     return (
                       <div 
                         key={m.id} 
-                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                        className={`flex items-end gap-2 mb-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className="text-[10px] text-slate-500 mb-0.5 px-1 font-semibold">
-                          {m.sender_name}
-                        </div>
+                        {!isMe && (
+                          <img 
+                            src={activeChat.partnerAvatar} 
+                            alt={activeChat.partnerName}
+                            onClick={() => setContactInfoModalOpen(true)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 mb-1 border border-slate-200 shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-400 hover:scale-105 transition"
+                            title={`Click to view ${activeChat.partnerName}'s profile`}
+                          />
+                        )}
+                        <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-lg`}>
+                          <div className="text-[10px] text-slate-500 mb-0.5 px-1 font-semibold flex items-center gap-1.5">
+                            <span>{m.sender_name}</span>
+                            {!isMe && <span className="text-[9px] text-emerald-600 font-bold uppercase">• {activeChat.partnerRole === 'lawyer' ? 'Advocate' : 'Client'}</span>}
+                          </div>
 
-                        {/* WhatsApp Styled Bubble */}
-                        <div className={`max-w-[85%] sm:max-w-lg rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs ${
-                          isMe
-                            ? 'bg-[#DCF8C6] text-slate-900 rounded-tr-xs'
-                            : 'bg-white text-slate-900 border border-slate-200/80 rounded-tl-xs'
-                        }`}>
-                          {renderBubbleContent(m.text)}
-                          <div className="text-[10px] mt-1 flex items-center justify-end gap-1 text-slate-500 font-medium">
-                            <span>{m.time}</span>
-                            <span className="text-[#34B7F1] font-bold">✓✓</span>
+                          {/* WhatsApp Styled Bubble */}
+                          <div className={`rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs w-full ${
+                            isMe
+                              ? 'bg-[#DCF8C6] text-slate-900 rounded-tr-xs'
+                              : 'bg-white text-slate-900 border border-slate-200/80 rounded-tl-xs'
+                          }`}>
+                            {renderBubbleContent(m.text)}
+                            <div className="text-[10px] mt-1 flex items-center justify-end gap-1 text-slate-500 font-medium">
+                              <span>{m.time}</span>
+                              <span className="text-[#34B7F1] font-bold">✓✓</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3265,7 +3277,7 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                 />
                 <div className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition text-white">
                   <span className="text-xl">📷</span>
-                  <span className="text-[9px] font-bold uppercase mt-0.5">Change</span>
+                  <span className="text-[9px] font-bold uppercase mt-0.5">Upload</span>
                 </div>
                 <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg border-2 border-white text-xs">
                   📷
@@ -3278,7 +3290,38 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                 className="hidden" 
                 onChange={handleAvatarFile} 
               />
-              <span className="text-[11px] text-slate-500 mt-2 font-medium">Tap photo to change (Device gallery or photo)</span>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current && avatarInputRef.current.click()}
+                  className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 transition"
+                >
+                  📷 Choose From Device
+                </button>
+              </div>
+
+              {/* Quick Preset Avatars */}
+              <div className="w-full mt-3 p-2 bg-slate-50 rounded-2xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-500 block mb-1.5 text-center uppercase tracking-wide">Or Pick Instant Avatar</span>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {[
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+                    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
+                    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+                    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
+                    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200'
+                  ].map((av, idx) => (
+                    <img
+                      key={idx}
+                      src={av}
+                      alt="Preset"
+                      onClick={() => setAvatarUrl(av)}
+                      className={`w-9 h-9 rounded-full object-cover cursor-pointer border-2 transition hover:scale-110 ${avatarUrl === av ? 'border-emerald-500 ring-2 ring-emerald-300' : 'border-white opacity-70 hover:opacity-100'}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Name Section */}

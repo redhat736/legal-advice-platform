@@ -66,7 +66,9 @@
       "email": "vikram.mehta@gmail.com",
       "password_hash": "$2a$12$ncOYkt74bj2p4YdmQwTSsOHZKQ2Mw1oTmJ1nVoyyqJ8awiPEFyt9u",
       "role": "client",
-      "created_at": "2026-11-04T06:58:36.968Z"
+      "created_at": "2026-11-04T06:58:36.968Z",
+      "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300",
+      "bio": "Property dispute client."
     },
     {
       "id": "1ce06942-0409-46ae-8ff4-1f79385f0d1c",
@@ -82,7 +84,9 @@
       "email": "rawatrahul8838@gmail.com",
       "password_hash": "$2a$12$kVmUr.rqOtYDB8d/lXSR0uolVA41IEbDsrbRd9e.CSC9faYafUmOq",
       "role": "client",
-      "created_at": "2026-11-04T07:06:29.661Z"
+      "created_at": "2026-11-04T07:06:29.661Z",
+      "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300",
+      "bio": "Corporate client & business executive seeking trial counsel."
     },
     {
       "id": "352110e4-b00a-4a43-96e1-533aa4bd2d7b",
@@ -90,7 +94,9 @@
       "email": "rahulrawat6528@gmail.com",
       "password_hash": "$2a$12$4sHwAMfgAQMpnCN98u8X/.pEcnGjGREHQyU0FX3hNzBhkw/GamFFa",
       "role": "client",
-      "created_at": "2026-11-05T11:34:55.500Z"
+      "created_at": "2026-11-05T11:34:55.500Z",
+      "avatar_url": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=300",
+      "bio": "Verified petitioner client."
     }
   ],
   "lawyer_profiles": [
@@ -108,7 +114,7 @@
       "currency": "₹",
       "is_available": true,
       "rating": 4.97,
-      "updated_at": "2026-11-06T06:55:58.844Z"
+      "updated_at": "2026-11-06T07:12:36.538Z"
     },
     {
       "id": "prof-1",
@@ -419,6 +425,13 @@
       "sender_id": "client-demo-1",
       "message_text": "Hello Adv. Rahul, I need assistance regarding high court matter.",
       "created_at": "2026-11-06T06:55:58.909Z"
+    },
+    {
+      "id": "6f9019ac-1831-4466-87b9-97fc5ff5e27a",
+      "session_id": "chat-demo-rahul",
+      "sender_id": "client-demo-1",
+      "message_text": "Hello Adv. Rahul, I need assistance regarding high court matter.",
+      "created_at": "2026-11-06T07:12:36.587Z"
     }
   ]
 }

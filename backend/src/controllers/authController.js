@@ -48,17 +48,22 @@ export const register = async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, SECURITY_CONFIG.BCRYPT_SALT_ROUNDS);
     const userId = uuidv4();
 
+    // Default avatar if none provided
+    const userAvatar = avatar_url || (role === 'lawyer' 
+      ? 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300' 
+      : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=075e54,1c2541,2563eb,d97706`);
+
     // Insert user
     await db.query(
-      'INSERT INTO users (id, name, email, password_hash, role) VALUES ($1, $2, $3, $4, $5)',
-      [userId, name, email.toLowerCase(), passwordHash, role]
+      'INSERT INTO users (id, name, email, password_hash, role, avatar_url, bio) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [userId, name, email.toLowerCase(), passwordHash, role, userAvatar, bio || 'Petitioner Client']
     );
 
     // If registered as lawyer, create professional profile
     let lawyerProfile = null;
     if (role === 'lawyer') {
       const profileId = uuidv4();
-      const defaultAvatar = avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300';
+      const defaultAvatar = userAvatar;
       
       const profResult = await db.query(
         'INSERT INTO lawyer_profiles (id, user_id, area_of_expertise, experience_years, achievements, bio, hourly_rate, license_no, court, avatar_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
@@ -83,7 +88,8 @@ export const register = async (req, res, next) => {
       name, 
       email: email.toLowerCase(), 
       role,
-      avatar_url: avatar_url || (role === 'lawyer' ? 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=300' : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=300'),
+      avatar_url: userAvatar,
+      bio: bio || 'Petitioner Client',
       profile: lawyerProfile 
     };
     const token = generateToken(newUser);
@@ -146,7 +152,8 @@ export const login = async (req, res, next) => {
         sanitizedUser.is_available = profResult.rows[0].is_available;
       }
     } else {
-      sanitizedUser.avatar_url = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+      sanitizedUser.avatar_url = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=075e54,1c2541,2563eb,d97706`;
+      sanitizedUser.bio = user.bio || 'Petitioner Client';
     }
 
     const token = generateToken(sanitizedUser);
@@ -212,7 +219,8 @@ export const guestLogin = async (req, res, next) => {
         sanitizedUser.is_available = profResult.rows[0].is_available;
       }
     } else {
-      sanitizedUser.avatar_url = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+      sanitizedUser.avatar_url = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=075e54,1c2541,2563eb,d97706`;
+      sanitizedUser.bio = user.bio || 'Petitioner Client';
     }
 
     const token = generateToken(sanitizedUser);
@@ -231,7 +239,7 @@ export const guestLogin = async (req, res, next) => {
 
 export const getCurrentUser = async (req, res, next) => {
   try {
-    const userResult = await db.query('SELECT id, name, email, role FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await db.query('SELECT id, name, email, role, avatar_url, bio FROM users WHERE id = $1', [req.user.id]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
@@ -252,7 +260,8 @@ export const getCurrentUser = async (req, res, next) => {
         user.is_available = profResult.rows[0].is_available;
       }
     } else {
-      user.avatar_url = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+      user.avatar_url = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=075e54,1c2541,2563eb,d97706`;
+      user.bio = user.bio || 'Petitioner Client';
     }
 
     return res.json({
