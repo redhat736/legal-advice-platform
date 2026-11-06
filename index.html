@@ -810,12 +810,6 @@
                             <span>⚙️</span> Profile & Legal Credentials
                           </button>
 
-                          <button
-                            onClick={() => { handleSwitchUser(isLawyer ? 'client' : 'lawyer'); setProfileDropdownOpen(false); }}
-                            className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold flex items-center gap-2"
-                          >
-                            <span>⇄</span> Switch Role to {isLawyer ? 'Client (Alexander)' : 'Adv. Rahul Rawat'}
-                          </button>
                         </div>
 
                         <div className="pt-2 border-t border-slate-100">
@@ -2265,17 +2259,82 @@ You can ask any legal question for free, or configure your **Google Gemini API K
       const [inputMsg, setInputMsg] = useState('');
       const [filterChat, setFilterChat] = useState('');
       const [mobileShowChat, setMobileShowChat] = useState(false);
+      const [filePreview, setFilePreview] = useState(null);
+      const [lightboxImg, setLightboxImg] = useState(null);
       const messagesEndRef = useRef(null);
+      const fileInputRef = useRef(null);
 
       useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, [activeMessages]);
 
+      // Send handler: file or text
       const handleSend = (e) => {
         e.preventDefault();
-        if (!inputMsg.trim() || !activeChat) return;
+        if (!activeChat) return;
+        if (filePreview) {
+          const msgText = filePreview.type === 'image'
+            ? '[IMG:' + filePreview.name + ']' + filePreview.dataUrl
+            : '[DOC:' + filePreview.name + ']' + filePreview.dataUrl;
+          onSendMessage(msgText);
+          setFilePreview(null);
+          setInputMsg('');
+          return;
+        }
+        if (!inputMsg.trim()) return;
         onSendMessage(inputMsg.trim());
         setInputMsg('');
+      };
+
+      // Render message text with clickable links
+      const renderMsgText = (text) => {
+        if (!text) return null;
+        const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
+        return parts.map((part, i) =>
+          /^https?:\/\//.test(part)
+            ? React.createElement('a', { key: i, href: part, target: '_blank', rel: 'noopener noreferrer', className: 'text-blue-600 underline break-all' }, part)
+            : React.createElement('span', { key: i }, part)
+        );
+      };
+
+      // File picker handler
+      const handleFilePick = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const isImage = file.type.startsWith('image/');
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setFilePreview({ type: isImage ? 'image' : 'doc', name: file.name, dataUrl: ev.target.result });
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+      };
+
+      // Render message bubble content
+      const renderBubbleContent = (text) => {
+        if (!text) return null;
+        if (text.startsWith('[IMG:')) {
+          const nameEnd = text.indexOf(']');
+          const name = text.substring(5, nameEnd);
+          const dataUrl = text.substring(nameEnd + 1);
+          return React.createElement('div', { className: 'flex flex-col gap-1' },
+            React.createElement('img', { src: dataUrl, alt: name, className: 'max-w-[220px] sm:max-w-xs rounded-xl cursor-pointer border border-slate-200', onClick: () => setLightboxImg(dataUrl) }),
+            React.createElement('span', { className: 'text-[10px] text-slate-500 italic' }, name)
+          );
+        }
+        if (text.startsWith('[DOC:')) {
+          const nameEnd = text.indexOf(']');
+          const name = text.substring(5, nameEnd);
+          const dataUrl = text.substring(nameEnd + 1);
+          return React.createElement('a', { href: dataUrl, download: name, target: '_blank', className: 'flex items-center gap-2 bg-white/60 border border-slate-200 rounded-xl px-3 py-2 hover:bg-white transition' },
+            React.createElement('span', { className: 'text-2xl' }, name.endsWith('.pdf') ? '\u{1F4C4}' : '\u{1F4CE}'),
+            React.createElement('div', { className: 'flex flex-col' },
+              React.createElement('span', { className: 'text-xs font-semibold text-slate-800 break-all max-w-[180px]' }, name),
+              React.createElement('span', { className: 'text-[10px] text-slate-500' }, 'Tap to download')
+            )
+          );
+        }
+        return React.createElement('div', { className: 'whitespace-pre-wrap break-words' }, renderMsgText(text));
       };
 
       const visibleChats = chats.filter(c => {
@@ -2452,7 +2511,7 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                             ? 'bg-[#DCF8C6] text-slate-900 rounded-tr-xs'
                             : 'bg-white text-slate-900 border border-slate-200/80 rounded-tl-xs'
                         }`}>
-                          <div>{m.text}</div>
+                          {renderBubbleContent(m.text)}
                           <div className="text-[10px] mt-1 flex items-center justify-end gap-1 text-slate-500 font-medium">
                             <span>{m.time}</span>
                             <span className="text-[#34B7F1] font-bold">✓✓</span>
@@ -2465,22 +2524,41 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                 </div>
 
                 {/* WhatsApp Input Bar */}
-                <form onSubmit={handleSend} className="p-2.5 sm:p-3 sm:px-4 bg-[#F0F2F5] border-t border-slate-200 flex items-center gap-2">
-                  <div className="text-lg text-slate-500 cursor-pointer px-1 hidden sm:block">📎</div>
-                  <input
-                    type="text"
-                    placeholder={`Message as ${currentUser.name}...`}
-                    value={inputMsg}
-                    onChange={(e) => setInputMsg(e.target.value)}
-                    className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm bg-white border border-slate-300 rounded-2xl focus:ring-2 focus:ring-[#25D366] focus:outline-none shadow-2xs"
-                  />
-                  <button
-                    type="submit"
-                    className="p-2 sm:p-2.5 px-3.5 sm:px-4 rounded-2xl bg-[#075E54] hover:bg-[#064e46] text-white font-extrabold text-xs shadow-md transition flex items-center gap-1 shrink-0"
-                  >
-                    <span>Send</span> <span>➤</span>
-                  </button>
-                </form>
+                <div className="bg-[#F0F2F5] border-t border-slate-200">
+                  {filePreview && (
+                    <div className="px-3 pt-2.5 pb-1 flex items-center gap-3">
+                      {filePreview.type === 'image'
+                        ? <img src={filePreview.dataUrl} alt={filePreview.name} className="h-16 w-16 object-cover rounded-xl border border-slate-300 shadow" />
+                        : <div className="h-14 w-14 flex items-center justify-center rounded-xl bg-white border border-slate-300 text-3xl shadow">{filePreview.name.endsWith('.pdf') ? '📄' : '📎'}</div>
+                      }
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-xs font-semibold text-slate-700 truncate">{filePreview.name}</span>
+                        <span className="text-[10px] text-slate-500">Ready to send</span>
+                      </div>
+                      <button type="button" onClick={() => setFilePreview(null)} className="text-slate-400 hover:text-red-500 text-lg font-bold px-1 transition">✕</button>
+                    </div>
+                  )}
+                  <form onSubmit={handleSend} className="p-2.5 sm:p-3 sm:px-4 flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx" className="hidden" onChange={handleFilePick} />
+                    <button type="button" onClick={() => fileInputRef.current && fileInputRef.current.click()} className="text-xl text-slate-500 hover:text-[#25D366] cursor-pointer px-1 transition shrink-0" title="Attach file">📎</button>
+                    <input
+                      type="text"
+                      placeholder={filePreview ? 'Add a caption (optional)...' : `Message as ${currentUser.name}...`}
+                      value={inputMsg}
+                      onChange={(e) => setInputMsg(e.target.value)}
+                      className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm bg-white border border-slate-300 rounded-2xl focus:ring-2 focus:ring-[#25D366] focus:outline-none shadow-2xs"
+                    />
+                    <button type="submit" className="p-2 sm:p-2.5 px-3.5 sm:px-4 rounded-2xl bg-[#075E54] hover:bg-[#064e46] text-white font-extrabold text-xs shadow-md transition flex items-center gap-1 shrink-0"><span>Send</span> <span>➤</span></button>
+                  </form>
+                </div>
+
+                {/* Image Lightbox */}
+                {lightboxImg && (
+                  <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
+                    <img src={lightboxImg} alt="Preview" className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl border border-white/20" />
+                    <button onClick={() => setLightboxImg(null)} className="absolute top-4 right-5 text-white text-3xl font-bold hover:text-red-400 transition">✕</button>
+                  </div>
+                )}
 
               </div>
             ) : (
