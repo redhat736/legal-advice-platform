@@ -72,6 +72,7 @@
         font-size: 16px !important;
       }
     }
+    @keyframes shrink { from { width: 100%; } to { width: 0%; } }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
@@ -255,6 +256,9 @@
       const [selectedCatModal, setSelectedCatModal] = useState(null);
       const [fileCaseModalOpen, setFileCaseModalOpen] = useState(false);
       const [notificationToast, setNotificationToast] = useState(null);
+      const notifTimerRef = useRef(null);
+      const [profileModalOpen, setProfileModalOpen] = useState(false);
+      const [viewProfileUser, setViewProfileUser] = useState(null);
       const [isSendingMsg, setIsSendingMsg] = useState(false);
 
       // Ref to track last seen message count for audio chime
@@ -357,9 +361,24 @@
         } catch (e) {}
       };
 
-      // 3. Fetch Messages for Current Active Session
+      // 3. Fetch Messages for Current Active Session (Permanent Cache + Stable Sync)
       const loadActiveMessages = async (sessionId, triggerChime = false) => {
         if (!sessionId || !currentUser) return;
+        const cacheKey = `LA_MSGS_${sessionId}`;
+
+        // Step 1: Instant local storage cache restore so old chat is permanently visible
+        if (!triggerChime) {
+          try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setActiveMessages(parsed);
+              }
+            }
+          } catch (e) {}
+        }
+
         try {
           const res = await apiCall(`/chat/sessions/${sessionId}/messages`);
           if (res && res.success && Array.isArray(res.messages)) {
@@ -371,6 +390,11 @@
               text: m.message_text,
               time: m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'
             }));
+
+            // Step 2: Save to localStorage for permanent offline/reload storage
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(msgs));
+            } catch (e) {}
 
             if (triggerChime && msgs.length > lastMessageCountRef.current) {
               const lastMsg = msgs[msgs.length - 1];
@@ -385,11 +409,31 @@
             }
 
             lastMessageCountRef.current = msgs.length;
-            setActiveMessages(msgs);
+
+            // Step 3: Smart state update - prevent re-rendering if messages haven't changed!
+            setActiveMessages(prev => {
+              if (prev && prev.length === msgs.length && prev.length > 0) {
+                const prevLast = prev[prev.length - 1];
+                const newLast = msgs[msgs.length - 1];
+                if (prevLast.id === newLast.id && prevLast.text === newLast.text) {
+                  return prev; // exact same reference prevents forced scroll jump!
+                }
+              }
+              return msgs;
+            });
           }
         } catch (e) {}
       };
 
+
+      // Auto-dismiss notification quickly (1.5 seconds)
+      useEffect(() => {
+        if (notificationToast) {
+          if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+          notifTimerRef.current = setTimeout(() => setNotificationToast(null), 1500);
+        }
+        return () => { if (notifTimerRef.current) clearTimeout(notifTimerRef.current); };
+      }, [notificationToast]);
       // Initial Mount & Continuous 1.5s Polling for Real-Life WhatsApp Sync
       useEffect(() => {
         loadLawyers();
@@ -438,6 +482,22 @@
         });
       };
 
+
+      // =======================================================================
+      // UPDATE PROFILE (name, avatar, etc)
+      // =======================================================================
+      const handleUpdateProfile = async (updates) => {
+        try {
+          await apiCall('/auth/profile', {
+            method: 'PATCH',
+            body: JSON.stringify(updates)
+          });
+          setCurrentUser(prev => ({ ...prev, ...updates }));
+          setNotificationToast({ title: '✅ Profile Updated!', body: 'Aapki profile successfully update ho gayi.' });
+        } catch(e) {
+          console.error('Profile update failed:', e);
+        }
+      };
       // =======================================================================
       // AUTHENTICATION HANDLERS
       // =======================================================================
@@ -642,18 +702,42 @@
                 }
                 setNotificationToast(null);
               }}
-              className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-slate-50 animate-slideDown border-l-4 border-l-emerald-500"
+              className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-3.5 flex items-start gap-3 cursor-pointer hover:bg-slate-50 animate-slideDown border-l-4 border-l-emerald-500"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
                 💬
               </div>
-              <div className="flex-1 overflow-hidden">
-                <div className="flex items-center justify-between">
+              <div className="flex-1 overflow-hidden min-w-0">
+                <div className="flex items-center justify-between gap-1">
                   <span className="text-xs font-bold text-slate-900 truncate">{notificationToast.title}</span>
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase">WhatsApp Ping</span>
+                  <span className="text-[10px] text-emerald-600 font-bold uppercase shrink-0">WhatsApp</span>
                 </div>
                 <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{notificationToast.body}</p>
                 <div className="text-[10px] text-blue-600 font-semibold mt-1">Open Chat Room &rarr;</div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNotificationToast(null);
+                }}
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center text-xs font-bold transition shrink-0 ml-1"
+                title="Dismiss notification"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* WhatsApp-Style Profile Edit Modal */}
+          {profileModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setProfileModalOpen(false)}>
+              <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+                <ProfileEditModal
+                  user={currentUser}
+                  onSave={async (updates) => { await handleUpdateProfile(updates); setProfileModalOpen(false); }}
+                  onClose={() => setProfileModalOpen(false)}
+                />
               </div>
             </div>
           )}
@@ -804,10 +888,10 @@
                           </button>
 
                           <button
-                            onClick={() => { setCurrentTab('settings'); setProfileDropdownOpen(false); }}
+                            onClick={() => { setProfileModalOpen(true); setProfileDropdownOpen(false); }}
                             className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold flex items-center gap-2"
                           >
-                            <span>⚙️</span> Profile & Legal Credentials
+                            <span>👤</span> Edit WhatsApp Profile & Details
                           </button>
 
                         </div>
@@ -911,6 +995,7 @@
                 onSendMessage={(text) => handleSendMessage(activeChatId, text)}
                 onStartChatWith={handleStartOrOpenChat}
                 onQuickSwitchUser={handleSwitchUser}
+                onOpenProfile={() => setProfileModalOpen(true)}
               />
             )}
 
@@ -2255,18 +2340,41 @@ You can ask any legal question for free, or configure your **Google Gemini API K
     // =========================================================================
     // SECTION 5: REAL-LIFE WHATSAPP CHAT (PURE HUMAN TO HUMAN - ZERO BOTS)
     // =========================================================================
-    function RealLifeWhatsAppView({ currentUser, chats, activeChat, activeMessages, allLawyers, onSelectChat, onSendMessage, onStartChatWith, onQuickSwitchUser }) {
+    function RealLifeWhatsAppView({ currentUser, chats, activeChat, activeMessages, allLawyers, onSelectChat, onSendMessage, onStartChatWith, onQuickSwitchUser, onOpenProfile }) {
       const [inputMsg, setInputMsg] = useState('');
       const [filterChat, setFilterChat] = useState('');
       const [mobileShowChat, setMobileShowChat] = useState(false);
       const [filePreview, setFilePreview] = useState(null);
       const [lightboxImg, setLightboxImg] = useState(null);
       const messagesEndRef = useRef(null);
+      const messagesContainerRef = useRef(null);
       const fileInputRef = useRef(null);
+      const isUserNearBottomRef = useRef(true);
+      const currentChatIdRef = useRef(activeChat?.id);
 
+      // Track whether user is reading old messages (scrolled up)
+      const handleChatScroll = () => {
+        const el = messagesContainerRef.current;
+        if (!el) return;
+        const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        isUserNearBottomRef.current = distFromBottom < 140;
+      };
+
+      // Smart scroll: only scroll if user switched chat or was already at the bottom
       useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, [activeMessages]);
+        if (activeChat?.id !== currentChatIdRef.current) {
+          currentChatIdRef.current = activeChat?.id;
+          isUserNearBottomRef.current = true;
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+          }, 30);
+          return;
+        }
+
+        if (isUserNearBottomRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, [activeMessages, activeChat?.id]);
 
       // Send handler: file or text
       const handleSend = (e) => {
@@ -2352,22 +2460,36 @@ You can ask any legal question for free, or configure your **Google Gemini API K
             {/* Left WhatsApp Sidebar */}
             <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-slate-50 ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
               
-              {/* WhatsApp Profile Top Bar */}
-              <div className="p-3.5 sm:p-4 bg-[#075E54] text-white flex items-center justify-between">
+              {/* WhatsApp Profile Top Bar (Click to Edit Profile) */}
+              <div 
+                onClick={onOpenProfile}
+                className="p-3.5 sm:p-4 bg-[#075E54] text-white flex items-center justify-between cursor-pointer hover:bg-[#064e46] transition group select-none"
+                title="Click to view & edit your WhatsApp profile"
+              >
                 <div className="flex items-center gap-3">
-                  <img 
-                    src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'} 
-                    alt={currentUser.name} 
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40"
-                  />
+                  <div className="relative">
+                    <img 
+                      src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'} 
+                      alt={currentUser.name} 
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white/40 group-hover:border-white transition"
+                    />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#25D366] rounded-full border border-white"></div>
+                  </div>
                   <div>
-                    <h3 className="text-xs font-bold leading-tight">{currentUser.name}</h3>
+                    <h3 className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                      <span>{currentUser.name}</span>
+                      <span className="text-[10px] text-white/70 group-hover:text-white">✏️</span>
+                    </h3>
                     <div className="text-[10px] text-emerald-200 font-extrabold uppercase">
                       ● Active Now ({currentUser.role === 'lawyer' ? 'Advocate' : 'Client'})
                     </div>
                   </div>
                 </div>
-                <span className="text-xl">📱</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] bg-white/15 hover:bg-white/25 px-2 py-1 rounded-lg text-emerald-100 font-bold transition">
+                    Profile ⚙️
+                  </span>
+                </div>
               </div>
 
               {/* Chat Search Box */}
@@ -2487,7 +2609,11 @@ You can ask any legal question for free, or configure your **Google Gemini API K
                 </div>
 
                 {/* WhatsApp Message Bubbles Area */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2.5 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:18px_18px]">
+                <div 
+                  ref={messagesContainerRef}
+                  onScroll={handleChatScroll}
+                  className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2.5 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:18px_18px]"
+                >
                   <div className="text-center my-1">
                     <span className="px-3 py-1 rounded-full bg-white/90 border border-slate-200 text-[10px] font-bold text-slate-500 shadow-2xs">
                       🔒 Messages are end-to-end encrypted under Bar Council Rules
@@ -2898,7 +3024,205 @@ You can ask any legal question for free, or configure your **Google Gemini API K
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+    // =========================================================================
+    // SECTION 7: WHATSAPP-STYLE REAL PROFILE EDIT MODAL
+    // =========================================================================
+    function ProfileEditModal({ user, onSave, onClose }) {
+      const [name, setName] = useState(user.name || '');
+      const [bio, setBio] = useState(user.bio || (user.profile ? user.profile.bio : '') || 'Available for legal consultation');
+      const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || (user.profile ? user.profile.avatar_url : '') || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200');
+      const [court, setCourt] = useState(user.profile ? (user.profile.court || '') : '');
+      const [licenseNo, setLicenseNo] = useState(user.profile ? (user.profile.license_no || '') : '');
+      const [area, setArea] = useState(user.profile ? (user.profile.area_of_expertise || '') : '');
+      const [isSaving, setIsSaving] = useState(false);
+      const avatarInputRef = useRef(null);
+
+      const isLawyer = user.role === 'lawyer';
+
+      const handleAvatarFile = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setAvatarUrl(ev.target.result);
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+          await onSave({
+            name: name.trim(),
+            bio: bio.trim(),
+            avatar_url: avatarUrl,
+            ...(isLawyer ? { court: court.trim(), licenseNo: licenseNo.trim(), area_of_expertise: area.trim() } : {})
+          });
+        } finally {
+          setIsSaving(false);
+        }
+      };
+
+      return (
+        <div className="flex flex-col max-h-[90vh]">
+          {/* WhatsApp Dark Green Header */}
+          <div className="bg-[#075E54] text-white px-5 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="text-white hover:text-emerald-200 text-lg font-bold p-1 rounded-full hover:bg-white/10 transition"
+              >
+                ←
+              </button>
+              <h2 className="text-base font-bold">Profile</h2>
+            </div>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="text-white/80 hover:text-white text-xl font-bold p-1 rounded-full hover:bg-white/10 transition"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="overflow-y-auto p-5 space-y-4 flex-1 bg-white">
+            {/* Avatar Centered with Camera Icon */}
+            <div className="flex flex-col items-center justify-center pt-2">
+              <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current && avatarInputRef.current.click()}>
+                <img 
+                  src={avatarUrl} 
+                  alt={name} 
+                  className="w-24 h-24 rounded-full object-cover border-4 border-slate-100 shadow-md group-hover:opacity-85 transition" 
+                />
+                <div className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition text-white">
+                  <span className="text-xl">📷</span>
+                  <span className="text-[9px] font-bold uppercase mt-0.5">Change</span>
+                </div>
+                <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg border-2 border-white text-xs">
+                  📷
+                </div>
+              </div>
+              <input 
+                ref={avatarInputRef} 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleAvatarFile} 
+              />
+              <span className="text-[11px] text-slate-500 mt-2 font-medium">Tap photo to change (Device gallery or photo)</span>
+            </div>
+
+            {/* Name Section */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase text-[#075E54] tracking-wider flex items-center gap-1.5">
+                <span>👤</span> Your Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#25D366] focus:outline-none font-semibold text-slate-800"
+                />
+                <span className="absolute right-3 top-2.5 text-slate-400 text-xs">✏️</span>
+              </div>
+              <p className="text-[10px] text-slate-400 px-1">This name will be visible to everyone you chat with on WhatsApp.</p>
+            </div>
+
+            {/* About / Bio Section */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase text-[#075E54] tracking-wider flex items-center gap-1.5">
+                <span>ℹ️</span> About / Status
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={bio}
+                  onChange={e => setBio(e.target.value)}
+                  placeholder="Available for consultation..."
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#25D366] focus:outline-none text-slate-800"
+                />
+                <span className="absolute right-3 top-2.5 text-slate-400 text-xs">✏️</span>
+              </div>
+            </div>
+
+            {/* Lawyer-specific fields */}
+            {isLawyer && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold uppercase text-[#075E54] tracking-wider flex items-center gap-1.5">
+                    <span>🏛️</span> Practice Court
+                  </label>
+                  <input
+                    type="text"
+                    value={court}
+                    onChange={e => setCourt(e.target.value)}
+                    placeholder="e.g. Supreme Court of India, High Court of Delhi"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#25D366] focus:outline-none text-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase text-[#075E54] tracking-wider">Specialization</label>
+                    <input
+                      type="text"
+                      value={area}
+                      onChange={e => setArea(e.target.value)}
+                      placeholder="Criminal, Civil, etc."
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#25D366] focus:outline-none text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase text-[#075E54] tracking-wider">Bar License No.</label>
+                    <input
+                      type="text"
+                      value={licenseNo}
+                      onChange={e => setLicenseNo(e.target.value)}
+                      placeholder="D/1482/2012"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#25D366] focus:outline-none text-slate-800"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Registered Email (Read-only) */}
+            <div className="space-y-1 pt-1 border-t border-slate-100">
+              <label className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Registered Email</label>
+              <div className="text-xs font-semibold text-slate-600 px-3 py-2 bg-slate-100 rounded-xl select-all">
+                {user.email}
+              </div>
+            </div>
+
+            {/* Save Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#075E54] hover:bg-[#064e46] shadow-md hover:shadow-lg transition flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Profile'}
+              </button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>

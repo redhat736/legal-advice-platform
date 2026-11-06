@@ -263,3 +263,51 @@ export const getCurrentUser = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { name, avatar_url, bio, area_of_expertise, experience_years, hourly_rate, court, licenseNo, achievements } = req.body;
+
+    const { embeddedStore, persistStore } = await import('../config/db.js');
+    
+    const user = embeddedStore.users.find(u => u.id === userId);
+    if (user) {
+      if (name) user.name = name;
+      if (avatar_url !== undefined) user.avatar_url = avatar_url;
+      if (bio !== undefined) user.bio = bio;
+    }
+
+    // Update lawyer profile if lawyer
+    const prof = embeddedStore.lawyer_profiles.find(p => p.user_id === userId);
+    if (prof) {
+      if (avatar_url !== undefined) prof.avatar_url = avatar_url;
+      if (bio !== undefined) prof.bio = bio;
+      if (area_of_expertise !== undefined) prof.area_of_expertise = area_of_expertise;
+      if (experience_years !== undefined) prof.experience_years = experience_years;
+      if (hourly_rate !== undefined) prof.hourly_rate = hourly_rate;
+      if (court !== undefined) prof.court = court;
+      if (licenseNo !== undefined) prof.license_no = licenseNo;
+      if (achievements !== undefined) prof.achievements = achievements;
+      prof.updated_at = new Date().toISOString();
+    }
+    
+    persistStore();
+    
+    return res.json({ 
+      success: true, 
+      message: 'Profile updated!',
+      user: user ? {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url || (prof ? prof.avatar_url : null),
+        bio: user.bio || (prof ? prof.bio : ''),
+        profile: prof || null
+      } : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};

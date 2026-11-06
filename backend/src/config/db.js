@@ -635,6 +635,19 @@ export const query = async (text, params = []) => {
 
   // 3. UPDATE queries (Permanently Persisted to Disk!)
   if (/^UPDATE/i.test(normalized)) {
+    // UPDATE users (name/avatar for clients)
+    if (/UPDATE users SET/i.test(normalized)) {
+      const user = embeddedStore.users.find(u => u.id === params[params.length - 1]);
+      if (user) {
+        if (/name/i.test(normalized) && params[0] !== undefined) user.name = params[0];
+        if (/avatar_url/i.test(normalized)) {
+          const aIdx = normalized.indexOf('avatar_url');
+          if (aIdx >= 0) user.avatar_url = params[0];
+        }
+        persistStore();
+        return { rows: [user], rowCount: 1 };
+      }
+    }
     if (/UPDATE cases SET status/i.test(normalized)) {
       const [status, caseId] = params;
       const c = embeddedStore.cases.find(x => x.id === caseId);
@@ -655,6 +668,12 @@ export const query = async (text, params = []) => {
           persistStore();
           return { rows: [p], rowCount: 1 };
         }
+      }
+      // avatar_url update for lawyer profile
+      if (/SET avatar_url/i.test(normalized)) {
+        const [avatar, uid] = params;
+        const pf = embeddedStore.lawyer_profiles.find(x => x.user_id === uid);
+        if (pf) { pf.avatar_url = avatar; pf.updated_at = new Date().toISOString(); persistStore(); return { rows: [pf], rowCount: 1 }; }
       }
       const [area, exp, achievements, bio, rate, available, userId] = params;
       const p = embeddedStore.lawyer_profiles.find(x => x.user_id === userId);

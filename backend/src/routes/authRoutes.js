@@ -21,4 +21,7 @@ router.post('/guest-login', authController.guestLogin);
 // Get current session user
 router.get('/me', requireAuth, authController.getCurrentUser);
 
+// Update profile
+router.patch('/profile', requireAuth, authController.updateProfile);
+
 export default router;
