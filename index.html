@@ -242,6 +242,50 @@
       });
 
       const [currentTab, setCurrentTab] = useState('dashboard');
+      const [tabHistory, setTabHistory] = useState(['dashboard']);
+
+      // Smooth tab navigation with history tracking
+      const navigateToTab = (newTab) => {
+        if (!newTab || newTab === currentTab) return;
+        setTabHistory(prev => {
+          const filtered = prev.filter(t => t !== newTab);
+          return [...filtered, newTab];
+        });
+        setCurrentTab(newTab);
+        try {
+          window.history.pushState({ tab: newTab }, '', '#' + newTab);
+        } catch (e) {}
+      };
+
+      // Go back to previous tab
+      const handleGoBack = () => {
+        setTabHistory(prev => {
+          if (prev.length > 1) {
+            const nextHistory = [...prev];
+            nextHistory.pop(); // remove current tab
+            const targetTab = nextHistory[nextHistory.length - 1] || 'dashboard';
+            setCurrentTab(targetTab);
+            return nextHistory;
+          } else {
+            setCurrentTab('dashboard');
+            return ['dashboard'];
+          }
+        });
+      };
+
+      // Support browser back button & mobile back swipe
+      useEffect(() => {
+        const handlePopState = (e) => {
+          if (e.state && e.state.tab) {
+            setCurrentTab(e.state.tab);
+          } else {
+            setCurrentTab('dashboard');
+          }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+      }, []);
+
       const [lawyers, setLawyers] = useState([]);
       const [cases, setCases] = useState(DEFAULT_CASES);
       const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
@@ -453,11 +497,16 @@
         }
         return () => { if (notifTimerRef.current) clearTimeout(notifTimerRef.current); };
       }, [notificationToast]);
-      // Initial Mount & Continuous 1.5s Polling for Real-Life WhatsApp Sync
+      // 1. Initial Lawyers load + low-frequency refresh (60s)
       useEffect(() => {
         loadLawyers();
+        const lawyerInterval = setInterval(() => {
+          loadLawyers();
+        }, 60000);
+        return () => clearInterval(lawyerInterval);
       }, []);
 
+      // 2. High-performance adaptive chat & session sync for 50+ concurrent users
       useEffect(() => {
         if (!currentUser) return;
         loadSessions();
@@ -465,16 +514,28 @@
           loadActiveMessages(activeChatId, false);
         }
 
-        const interval = setInterval(() => {
-          loadLawyers();
-          loadSessions();
-          if (activeChatId) {
+        let lastSessionPoll = Date.now();
+
+        const syncInterval = setInterval(() => {
+          const now = Date.now();
+          // Skip polling when page is minimized or backgrounded to save server CPU
+          if (typeof document !== 'undefined' && document.hidden) return;
+
+          // If user is actively on WhatsApp chat tab, sync messages every 2.5s
+          if (currentTab === 'chat' && activeChatId) {
             loadActiveMessages(activeChatId, true);
           }
-        }, 1500);
 
-        return () => clearInterval(interval);
-      }, [currentUser?.id, activeChatId]);
+          // Poll sessions roster for notification pings: every 6s on chat tab, every 12s on other tabs
+          const sessionIntervalMs = currentTab === 'chat' ? 6000 : 12000;
+          if (now - lastSessionPoll >= sessionIntervalMs) {
+            lastSessionPoll = now;
+            loadSessions();
+          }
+        }, 2500);
+
+        return () => clearInterval(syncInterval);
+      }, [currentUser?.id, activeChatId, currentTab]);
 
       // =======================================================================
       // ADVOCATE ACTIVE / INACTIVE STATUS TOGGLE
@@ -545,6 +606,7 @@
           };
           setCurrentUser(u);
           setCurrentTab('dashboard');
+          setTabHistory(['dashboard']);
           await loadLawyers();
           await loadSessions();
         } else {
@@ -566,6 +628,7 @@
               is_available: res.user.is_available === true || res.user.is_available === 'true'
             });
             setCurrentTab('dashboard');
+            setTabHistory(['dashboard']);
             await loadLawyers();
             await loadSessions();
             setNotificationToast({
@@ -606,6 +669,7 @@
         localStorage.removeItem('LA_JWT_TOKEN');
         setCurrentUser(null);
         setCurrentTab('dashboard');
+        setTabHistory(['dashboard']);
         setActiveChatId(null);
         setActiveMessages([]);
         setProfileDropdownOpen(false);
@@ -620,7 +684,7 @@
       // =======================================================================
       const handleStartOrOpenChat = async (targetLawyer) => {
         if (!currentUser) return;
-        setCurrentTab('chat');
+        navigateToTab('chat');
 
         try {
           const res = await apiCall(`/chat/conversation/${targetLawyer.id}`);
@@ -728,7 +792,7 @@
               onClick={() => {
                 if (notificationToast.targetChatId) {
                   setActiveChatId(notificationToast.targetChatId);
-                  setCurrentTab('chat');
+                  navigateToTab('chat');
                 }
                 setNotificationToast(null);
               }}
@@ -795,21 +859,36 @@
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-16">
                 
-                {/* Brand Logo */}
-                <div 
-                  onClick={() => setCurrentTab('dashboard')} 
-                  className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
-                >
-                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shadow-xs group-hover:scale-105 transition-transform">
-                    <span className="text-lg sm:text-xl">⚖️</span>
-                  </div>
-                  <div>
-                    <div className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-blue-700 transition leading-tight">
-                      Legal Advice
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Dynamic Back Arrow Button when NOT on Dashboard */}
+                  {currentTab !== 'dashboard' && (
+                    <button
+                      type="button"
+                      onClick={handleGoBack}
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-extrabold text-xs transition border border-slate-200/80 shadow-2xs group cursor-pointer shrink-0"
+                      title="Back to previous page"
+                    >
+                      <span className="text-base font-black group-hover:-translate-x-1 transition-transform">←</span>
+                      <span className="font-bold text-[11px] sm:text-xs">Back</span>
+                    </button>
+                  )}
+
+                  {/* Brand Logo */}
+                  <div 
+                    onClick={() => navigateToTab('dashboard')} 
+                    className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
+                  >
+                    <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shadow-xs group-hover:scale-105 transition-transform">
+                      <span className="text-lg sm:text-xl">⚖️</span>
                     </div>
-                    <div className="text-[9px] sm:text-[10px] font-bold text-blue-600 tracking-wider uppercase flex items-center gap-1.5">
-                      <span>Live Counsel</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Database Connected"></span>
+                    <div>
+                      <div className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-blue-700 transition leading-tight">
+                        Legal Advice
+                      </div>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-blue-600 tracking-wider uppercase flex items-center gap-1.5">
+                        <span>Live Counsel</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Database Connected"></span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -827,7 +906,7 @@
                   ].map(tab => (
                     <button
                       key={tab.id}
-                      onClick={() => setCurrentTab(tab.id)}
+                      onClick={() => navigateToTab(tab.id)}
                       className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all ${
                         currentTab === tab.id
                           ? 'bg-blue-600 text-white shadow-xs'
@@ -911,7 +990,7 @@
 
                         <div className="py-1">
                           <button
-                            onClick={() => { setCurrentTab('ai'); setProfileDropdownOpen(false); }}
+                            onClick={() => { navigateToTab('ai'); setProfileDropdownOpen(false); }}
                             className="w-full text-left px-3 py-2 rounded-xl text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-bold flex items-center gap-2"
                           >
                             <span>🤖</span> NyayaAI Free Legal Assistant
@@ -956,7 +1035,7 @@
               ].map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setCurrentTab(tab.id)}
+                  onClick={() => navigateToTab(tab.id)}
                   className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold text-xs ${
                     currentTab === tab.id ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 bg-white border border-slate-200'
                   }`}
@@ -979,7 +1058,7 @@
                 onOpenCaseModal={() => setFileCaseModalOpen(true)}
                 onUpdateCaseStatus={handleUpdateCaseStatus}
                 onGoToChat={(targetUser) => handleStartOrOpenChat(targetUser)}
-                onNavigate={setCurrentTab}
+                onNavigate={navigateToTab}
                 onToggleStatus={handleToggleLawyerStatus}
               />
             )}
@@ -1046,7 +1125,7 @@
           {/* Fixed Modern Mobile Bottom Navigation Bar (iOS Safe Area Optimized) */}
           <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 lg:hidden flex items-center justify-around py-2 px-1 text-[10px] font-bold text-slate-600 shadow-lg pb-safe">
             <button 
-              onClick={() => setCurrentTab('dashboard')} 
+              onClick={() => navigateToTab('dashboard')} 
               className={`flex flex-col items-center gap-0.5 ${currentTab === 'dashboard' ? 'text-blue-600 font-extrabold' : ''}`}
             >
               <span className="text-lg">📊</span>
@@ -1054,7 +1133,7 @@
             </button>
 
             <button 
-              onClick={() => setCurrentTab('cases')} 
+              onClick={() => navigateToTab('cases')} 
               className={`flex flex-col items-center gap-0.5 ${currentTab === 'cases' ? 'text-blue-600 font-extrabold' : ''}`}
             >
               <span className="text-lg">📁</span>
@@ -1062,7 +1141,7 @@
             </button>
 
             <button 
-              onClick={() => setCurrentTab('ai')} 
+              onClick={() => navigateToTab('ai')} 
               className={`flex flex-col items-center gap-0.5 relative ${currentTab === 'ai' ? 'text-blue-600 font-extrabold' : ''}`}
             >
               <span className="text-lg">🤖</span>
@@ -1071,7 +1150,7 @@
             </button>
 
             <button 
-              onClick={() => setCurrentTab('chat')} 
+              onClick={() => navigateToTab('chat')} 
               className={`flex flex-col items-center gap-0.5 ${currentTab === 'chat' ? 'text-blue-600 font-extrabold' : ''}`}
             >
               <span className="text-lg">💬</span>
@@ -1079,7 +1158,7 @@
             </button>
 
             <button 
-              onClick={() => setCurrentTab('agents')} 
+              onClick={() => navigateToTab('agents')} 
               className={`flex flex-col items-center gap-0.5 ${currentTab === 'agents' ? 'text-blue-600 font-extrabold' : ''}`}
             >
               <span className="text-lg">👨‍⚖️</span>

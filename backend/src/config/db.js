@@ -28,16 +28,35 @@ export const embeddedStore = {
   chat_messages: []
 };
 
-// Safe disk write to data/store.json
+// Non-blocking, Debounced Asynchronous disk persistence to data/store.json (prevents event loop lag with 50+ users)
+let persistTimer = null;
+let isSavingToDisk = false;
+let savePending = false;
+
 export const persistStore = () => {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(async () => {
+    if (isSavingToDisk) {
+      savePending = true;
+      return;
     }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(embeddedStore, null, 2), 'utf8');
-  } catch (err) {
-    console.error('🚨 [Database Persistence Error]:', err.message);
-  }
+    isSavingToDisk = true;
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        await fs.promises.mkdir(DATA_DIR, { recursive: true });
+      }
+      const serialized = JSON.stringify(embeddedStore);
+      await fs.promises.writeFile(STORE_FILE, serialized, 'utf8');
+    } catch (err) {
+      console.error('🚨 [Database Persistence Error]:', err.message);
+    } finally {
+      isSavingToDisk = false;
+      if (savePending) {
+        savePending = false;
+        persistStore();
+      }
+    }
+  }, 120); // 120ms debounce batches concurrent writes into a single disk flush
 };
 
 // Seed default initial data into embedded storage

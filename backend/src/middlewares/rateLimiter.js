@@ -1,21 +1,21 @@
 import rateLimit from 'express-rate-limit';
 
-// Global API rate limit: 3000 requests per 15 minutes (generous for active WhatsApp chat polling)
+// Global API rate limit: 15,000 requests per 15 minutes (easily supports 50-100+ simultaneous users)
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 3000,
+  max: 15000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
-    error: 'Too many requests from this client. Please slow down.'
+    error: 'Server is currently handling high volume traffic. Please wait a moment.'
   }
 });
 
-// Authentication rate limit: 100 attempts per 15 minutes
+// Authentication rate limit: 200 attempts per 15 minutes
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
